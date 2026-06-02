@@ -426,7 +426,7 @@ function PageBtn({ active, children }) {
 
 export default function Reports() {
   return (
-    <AdminLayout title="Wayfinder Management" userSubtitle="Super Admin">
+    <AdminLayout title="Reports" userSubtitle="Super Admin">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
