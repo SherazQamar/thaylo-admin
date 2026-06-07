@@ -7,7 +7,6 @@ import {
   FileText,
   AlertTriangle,
   UserCircle2,
-  ChevronsLeft,
   Menu,
 } from 'lucide-react'
 import logo from '../assets/logo.png'
@@ -42,6 +41,7 @@ const NAV = [
     href: '/alerts',
     matchPaths: ['/alerts'],
     Icon: AlertTriangle,
+    badge: 6,
   },
   {
     label: 'SETTINGS',
@@ -124,38 +124,23 @@ export default function Sidebar() {
                   />
                 </span>
                 {!collapsed && (
-                  <span className="text-[13px] font-medium tracking-wider">
+                  <span className="text-[13px] font-medium tracking-wider flex-1">
                     {item.label}
                   </span>
+                )}
+                {item.badge && !collapsed && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#FF6F6F] text-white text-[10px] font-bold flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+                {item.badge && collapsed && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#FF6F6F]" />
                 )}
               </Link>
             )
           })}
         </nav>
 
-        {/* Collapse toggle */}
-        <div className="px-3 pb-6">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-white/40 hover:text-white/70 transition-colors w-full cursor-pointer ${
-              collapsed ? 'justify-center' : ''
-            }`}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <ChevronsLeft
-              size={20}
-              strokeWidth={1.8}
-              className={`transition-transform duration-300 ${
-                collapsed ? 'rotate-180' : ''
-              }`}
-            />
-            {!collapsed && (
-              <span className="text-[13px] font-medium tracking-wider">
-                COLLAPSE
-              </span>
-            )}
-          </button>
-        </div>
       </aside>
 
       {/* Mobile Header */}
