@@ -1,11 +1,21 @@
 import { ChevronDown } from 'lucide-react'
 import Sidebar from './Sidebar'
+import { useAuthStore } from '../stores/auth.store'
+
+function formatRoleLabel(role) {
+  if (role === 'SUPER_ADMIN') return 'Super Admin'
+  if (role === 'ADMIN') return 'Admin'
+  return role ?? 'Admin'
+}
 
 export default function AdminLayout({
   title = 'Admin Dashboard',
-  userSubtitle = 'Super Admin',
+  userSubtitle,
   children,
 }) {
+  const user = useAuthStore((state) => state.user)
+  const displayName = user?.name ?? 'Admin'
+  const roleLabel = userSubtitle ?? formatRoleLabel(user?.role)
   return (
     <div
       className="min-h-screen flex bg-[#111023]"
@@ -27,10 +37,10 @@ export default function AdminLayout({
             <span className="block w-9 h-9 rounded-full bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6]" />
             <span className="text-left leading-tight">
               <span className="block text-white text-[13px] font-semibold">
-                Alex Filler
+                {displayName}
               </span>
               <span className="block text-white/50 text-[11px]">
-                {userSubtitle}
+                {roleLabel}
               </span>
             </span>
             <ChevronDown size={16} className="text-white/50" />

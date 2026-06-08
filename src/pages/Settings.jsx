@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Volume2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { logoutAdmin } from '../lib/auth-session'
 import AdminLayout from '../components/AdminLayout'
 import RoleManagementDrawer from '../components/RoleManagementDrawer'
 import RoleManagementModal from '../components/RoleManagementModal'
@@ -273,6 +274,7 @@ export default function Settings() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => {
           setLogoutOpen(false)
+          logoutAdmin()
           navigate('/')
         }}
       />

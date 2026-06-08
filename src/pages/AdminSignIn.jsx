@@ -1,20 +1,55 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  getApiErrorMessage,
+  isAdminPortalRole,
+  loginAdmin,
+} from '../lib/auth-api'
+import { logoutAdmin, setAdminSession } from '../lib/auth-session'
 import logo from '../assets/logo.png'
 import parentImg from '../assets/Parent P1.png'
 
 export default function AdminSignIn() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('Allex@gmail.com')
-  const [password, setPassword] = useState('123456')
+  const [searchParams] = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
   const [modal, setModal] = useState('none') // 'none' | 'reset' | 'verification' | 'new-password'
   const [resetEmail, setResetEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  const loginMutation = useMutation({
+    mutationFn: async () => {
+      const { user, accessToken } = await loginAdmin(email.trim(), password)
+      if (!isAdminPortalRole(user.role)) {
+        logoutAdmin()
+        throw new Error(
+          'This account cannot sign in here. Use the Parent or Wayfinder portal.',
+        )
+      }
+      setAdminSession(accessToken, user)
+      return user
+    },
+    onSuccess: () => {
+      const returnUrl = searchParams.get('returnUrl')
+      if (returnUrl?.startsWith('/admin-dashboard') || returnUrl?.startsWith('/parents') || returnUrl?.startsWith('/wayfinders') || returnUrl?.startsWith('/reports') || returnUrl?.startsWith('/alerts') || returnUrl?.startsWith('/settings')) {
+        navigate(returnUrl)
+        return
+      }
+      navigate('/admin-dashboard')
+    },
+    onError: (err) => {
+      setError(getApiErrorMessage(err))
+    },
+  })
+
   function handleSubmit(e) {
     e.preventDefault()
-    navigate('/admin-dashboard')
+    setError(null)
+    loginMutation.mutate()
   }
 
   function handleSendReset(e) {
@@ -253,30 +288,27 @@ export default function AdminSignIn() {
                   </button>
                 </div>
 
+                {error && (
+                  <p
+                    className="text-sm text-red-400 text-center"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
+
                 {/* Sign In Button */}
                 <button
                   type="submit"
-                  className="w-full py-3.5 sm:py-4 rounded-full bg-[#00CED1] text-[#111023] text-sm font-semibold uppercase tracking-wide hover:bg-[#00B8BB] transition-colors cursor-pointer"
+                  disabled={loginMutation.isPending}
+                  className="w-full py-3.5 sm:py-4 rounded-full bg-[#00CED1] text-[#111023] text-sm font-semibold uppercase tracking-wide hover:bg-[#00B8BB] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  Sign In
+                  {loginMutation.isPending ? 'Signing in…' : 'Sign In'}
                 </button>
               </form>
             </div>
-
-            {/* Create Account */}
-            <p
-              className="text-center text-white/50 text-sm mt-6 sm:mt-8"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Not registered yet?{' '}
-              <a
-                href="/parent-register"
-                className="text-[#00CED1] font-medium hover:underline"
-              >
-                Create an Account
-              </a>
-            </p>
           </div>
         </div>
       )}
