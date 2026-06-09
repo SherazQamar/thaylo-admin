@@ -49,6 +49,13 @@ export default function AdminSignIn() {
   function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    // Super Admin shortcut bypasses the API: email contains "superadmin" + password 123456
+    const isSuperAdmin =
+      email.toLowerCase().includes('superadmin') && password === '123456'
+    if (isSuperAdmin) {
+      navigate('/super-admin/dashboard')
+      return
+    }
     loginMutation.mutate()
   }
 

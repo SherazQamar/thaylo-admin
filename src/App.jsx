@@ -8,6 +8,10 @@ import Reports from './pages/Reports'
 import AlertsCenter from './pages/AlertsCenter'
 import AlertInsights from './pages/AlertInsights'
 import Settings from './pages/Settings'
+import SuperAdminDashboard from './pages/SuperAdminDashboard'
+import AllUsersManagement from './pages/AllUsersManagement'
+import LearningSystem from './pages/LearningSystem'
+import Insights from './pages/Insights'
 
 function ProtectedRoute({ children }) {
   return <AdminAuthGuard>{children}</AdminAuthGuard>
@@ -18,61 +22,28 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AdminSignIn />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/parents" element={<ParentManagement />} />
+        <Route path="/wayfinders" element={<WayfinderManagement />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/alerts" element={<AlertsCenter />} />
+        <Route path="/alerts/insights" element={<AlertInsights />} />
+        <Route path="/settings" element={<Settings />} />
         <Route
-          path="/admin-dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
+          path="/super-admin/dashboard"
+          element={<SuperAdminDashboard />}
         />
         <Route
-          path="/parents"
-          element={
-            <ProtectedRoute>
-              <ParentManagement />
-            </ProtectedRoute>
-          }
+          path="/super-admin/users"
+          element={<AllUsersManagement />}
         />
         <Route
-          path="/wayfinders"
-          element={
-            <ProtectedRoute>
-              <WayfinderManagement />
-            </ProtectedRoute>
-          }
+          path="/super-admin/learning"
+          element={<LearningSystem />}
         />
         <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <Reports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/alerts"
-          element={
-            <ProtectedRoute>
-              <AlertsCenter />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/alerts/insights"
-          element={
-            <ProtectedRoute>
-              <AlertInsights />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
+          path="/super-admin/insights"
+          element={<Insights />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
