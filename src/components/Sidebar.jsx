@@ -15,7 +15,7 @@ const NAV = [
   {
     label: 'DASHBOARD',
     href: '/admin-dashboard',
-    matchPaths: ['/admin-dashboard', '/'],
+    matchPaths: ['/admin-dashboard'],
     Icon: LayoutDashboard,
   },
   {

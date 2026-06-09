@@ -1,18 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  fetchAdminProfile,
   getApiErrorMessage,
   isAdminPortalRole,
   loginAdmin,
 } from '../lib/auth-api'
+import { getAdminToken } from '../lib/auth-cookies'
+import {
+  getHomePathForRole,
+  isPathAllowedForRole,
+} from '../lib/portal-auth'
 import { logoutAdmin, setAdminSession } from '../lib/auth-session'
+import { useAuthStore } from '../stores/auth.store'
 import logo from '../assets/logo.png'
 import parentImg from '../assets/Parent P1.png'
 
 export default function AdminSignIn() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const user = useAuthStore((state) => state.user)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -20,6 +28,45 @@ export default function AdminSignIn() {
   const [resetEmail, setResetEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  useEffect(() => {
+    const token = getAdminToken()
+    if (!token) return
+
+    let cancelled = false
+
+    async function redirectIfSessionValid() {
+      try {
+        let role = user?.role
+        if (!role) {
+          const profile = await fetchAdminProfile()
+          if (cancelled) return
+          if (!isAdminPortalRole(profile.role)) {
+            logoutAdmin()
+            return
+          }
+          useAuthStore.getState().setUser(profile)
+          role = profile.role
+        }
+
+        const returnUrl = searchParams.get('returnUrl')
+        if (returnUrl && isPathAllowedForRole(returnUrl, role)) {
+          navigate(returnUrl, { replace: true })
+          return
+        }
+
+        navigate(getHomePathForRole(role), { replace: true })
+      } catch {
+        if (!cancelled) logoutAdmin()
+      }
+    }
+
+    redirectIfSessionValid()
+
+    return () => {
+      cancelled = true
+    }
+  }, [navigate, searchParams, user?.role])
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -33,13 +80,16 @@ export default function AdminSignIn() {
       setAdminSession(accessToken, user)
       return user
     },
-    onSuccess: () => {
+    onSuccess: (loggedInUser) => {
       const returnUrl = searchParams.get('returnUrl')
-      if (returnUrl?.startsWith('/admin-dashboard') || returnUrl?.startsWith('/parents') || returnUrl?.startsWith('/wayfinders') || returnUrl?.startsWith('/reports') || returnUrl?.startsWith('/alerts') || returnUrl?.startsWith('/settings')) {
+      if (
+        returnUrl &&
+        isPathAllowedForRole(returnUrl, loggedInUser.role)
+      ) {
         navigate(returnUrl)
         return
       }
-      navigate('/admin-dashboard')
+      navigate(getHomePathForRole(loggedInUser.role))
     },
     onError: (err) => {
       setError(getApiErrorMessage(err))
@@ -49,13 +99,6 @@ export default function AdminSignIn() {
   function handleSubmit(e) {
     e.preventDefault()
     setError(null)
-    // Super Admin shortcut bypasses the API: email contains "superadmin" + password 123456
-    const isSuperAdmin =
-      email.toLowerCase().includes('superadmin') && password === '123456'
-    if (isSuperAdmin) {
-      navigate('/super-admin/dashboard')
-      return
-    }
     loginMutation.mutate()
   }
 
