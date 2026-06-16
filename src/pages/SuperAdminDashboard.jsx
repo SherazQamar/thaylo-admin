@@ -355,7 +355,7 @@ function QuickAccess() {
 
 export default function SuperAdminDashboard() {
   return (
-    <SuperAdminLayout title="Wayfinder Dashboard" userSubtitle="Wayfinder">
+    <SuperAdminLayout title="Super Admin Dashboard" userSubtitle="Wayfinder">
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {STATS.map((s) => (
