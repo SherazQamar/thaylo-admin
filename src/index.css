@@ -5,3 +5,29 @@ body,
 #root {
   min-height: 100svh;
 }
+
+body {
+  cursor: default;
+}
+
+/* Arrow cursor on regular text; pointer on interactive elements */
+a[href],
+button:not(:disabled),
+label[for],
+select,
+summary,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+textarea,
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+  cursor: text;
+}
