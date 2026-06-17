@@ -1,5 +1,12 @@
 import { useState } from 'react'
 import { X, ChevronDown } from 'lucide-react'
+import {
+  formatPhoneInput,
+  isValidPhoneDigits,
+  normalizePhoneDigits,
+  PHONE_INPUT_PLACEHOLDER,
+  PHONE_VALIDATION_MESSAGE,
+} from '../lib/phone'
 
 function Field({ label, children }) {
   return (
@@ -45,12 +52,27 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
   const [role, setRole] = useState('')
   const [grade, setGrade] = useState('')
   const [status, setStatus] = useState('Active')
+  const [phoneError, setPhoneError] = useState('')
 
   if (!open) return null
 
   function handleSubmit(e) {
     e.preventDefault()
-    onSubmit?.({ fullName, phone, email, role, grade, status })
+
+    if (!isValidPhoneDigits(phone)) {
+      setPhoneError(PHONE_VALIDATION_MESSAGE)
+      return
+    }
+
+    setPhoneError('')
+    onSubmit?.({
+      fullName,
+      phone: normalizePhoneDigits(phone),
+      email,
+      role,
+      grade,
+      status,
+    })
     onClose?.()
   }
 
@@ -98,10 +120,18 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
             <Field label="Phone Number">
               <TextInput
                 type="tel"
-                placeholder="Full Name"
+                inputMode="numeric"
+                placeholder={PHONE_INPUT_PLACEHOLDER}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                maxLength={12}
+                onChange={(e) => {
+                  setPhoneError('')
+                  setPhone(formatPhoneInput(e.target.value))
+                }}
               />
+              {phoneError && (
+                <p className="mt-1.5 text-xs text-[#FF6F6F]">{phoneError}</p>
+              )}
             </Field>
           </div>
 
