@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Smile,
+  GraduationCap,
   MessageSquare,
   FileText,
   AlertTriangle,
@@ -23,6 +24,12 @@ const NAV = [
     href: '/parents',
     matchPaths: ['/parents', '/parent'],
     Icon: Smile,
+  },
+  {
+    label: 'STUDENTS',
+    href: '/students',
+    matchPaths: ['/students'],
+    Icon: GraduationCap,
   },
   {
     label: 'WAYFINDERS',
@@ -53,7 +60,7 @@ const NAV = [
 
 function isActiveItem(pathname, item) {
   return item.matchPaths
-    ? item.matchPaths.some((p) => pathname === p)
+    ? item.matchPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
     : pathname === item.href
 }
 
