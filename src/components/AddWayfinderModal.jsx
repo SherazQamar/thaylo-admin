@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import {
   formatPhoneInput,
@@ -8,12 +8,13 @@ import {
   PHONE_VALIDATION_MESSAGE,
 } from '../lib/phone'
 
+const SPECIALTY_OPTIONS = ['Math Coach', 'Lead Mentor', 'Counselor']
+const GRADE_OPTIONS = ['K4', 'K5', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10']
+
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="block text-white text-sm font-medium mb-1.5">
-        {label}
-      </span>
+      <span className="block text-white text-sm font-medium mb-1.5">{label}</span>
       {children}
     </label>
   )
@@ -28,52 +29,77 @@ function TextInput(props) {
   )
 }
 
-function SelectInput({ value, placeholder, ...rest }) {
+function SelectInput({ value, onChange, placeholder, options }) {
   return (
     <div className="relative">
-      <button
-        type="button"
-        {...rest}
-        className="w-full text-left px-4 py-3 rounded-full bg-white/[0.05] text-sm border border-transparent flex items-center justify-between hover:bg-white/[0.07]"
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full appearance-none px-4 py-3 pr-10 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
       >
-        <span className={value ? 'text-white' : 'text-white/40'}>
-          {value || placeholder}
-        </span>
-        <ChevronDown size={16} className="text-white/40" />
-      </button>
+        <option value="" className="bg-[#313044]">
+          {placeholder}
+        </option>
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="bg-[#313044]">
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={16}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+      />
     </div>
   )
 }
 
-export default function AddWayfinderModal({ open, onClose, onSubmit }) {
-  const [fullName, setFullName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState('')
-  const [grade, setGrade] = useState('')
-  const [status, setStatus] = useState('Active')
+const EMPTY_FORM = {
+  fullName: '',
+  phone: '',
+  email: '',
+  specialty: '',
+  gradeLevel: '',
+  isActive: 'true',
+}
+
+/**
+ * @param {{ open: boolean; onClose: () => void; onSubmit?: (payload: import('../lib/admin-api').CreateWayfinderPayload) => void | Promise<void>; isSubmitting?: boolean; error?: string }} props
+ */
+export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmitting, error }) {
+  const [form, setForm] = useState(EMPTY_FORM)
   const [phoneError, setPhoneError] = useState('')
+
+  useEffect(() => {
+    if (!open) {
+      setForm(EMPTY_FORM)
+      setPhoneError('')
+    }
+  }, [open])
 
   if (!open) return null
 
-  function handleSubmit(e) {
+  function updateField(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
 
-    if (!isValidPhoneDigits(phone)) {
+    if (!isValidPhoneDigits(form.phone)) {
       setPhoneError(PHONE_VALIDATION_MESSAGE)
       return
     }
 
     setPhoneError('')
-    onSubmit?.({
-      fullName,
-      phone: normalizePhoneDigits(phone),
-      email,
-      role,
-      grade,
-      status,
+    await onSubmit?.({
+      fullName: form.fullName.trim(),
+      email: form.email.trim(),
+      phone: normalizePhoneDigits(form.phone),
+      specialty: form.specialty || undefined,
+      gradeLevel: form.gradeLevel || undefined,
+      isActive: form.isActive === 'true',
     })
-    onClose?.()
   }
 
   return (
@@ -81,11 +107,7 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 overflow-y-auto"
       style={{ fontFamily: 'Inter, sans-serif' }}
     >
-      <div
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
 
       <div
         className="relative w-full max-w-[560px] rounded-2xl border border-white/5 p-7"
@@ -102,7 +124,6 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
 
         <h3 className="text-white text-xl font-bold">Add New Wayfinder</h3>
 
-        {/* Wayfinder Information */}
         <form onSubmit={handleSubmit} className="mt-5">
           <p className="text-white text-base font-semibold border-b border-white/10 pb-3">
             Wayfinder Information
@@ -113,8 +134,9 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
               <TextInput
                 type="text"
                 placeholder="Full Name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={form.fullName}
+                onChange={(e) => updateField('fullName', e.target.value)}
+                required
               />
             </Field>
             <Field label="Phone Number">
@@ -122,16 +144,15 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
                 type="tel"
                 inputMode="numeric"
                 placeholder={PHONE_INPUT_PLACEHOLDER}
-                value={phone}
+                value={form.phone}
                 maxLength={12}
                 onChange={(e) => {
                   setPhoneError('')
-                  setPhone(formatPhoneInput(e.target.value))
+                  updateField('phone', formatPhoneInput(e.target.value))
                 }}
+                required
               />
-              {phoneError && (
-                <p className="mt-1.5 text-xs text-[#FF6F6F]">{phoneError}</p>
-              )}
+              {phoneError && <p className="mt-1.5 text-xs text-[#FF6F6F]">{phoneError}</p>}
             </Field>
           </div>
 
@@ -139,47 +160,73 @@ export default function AddWayfinderModal({ open, onClose, onSubmit }) {
             <Field label="Email Address">
               <TextInput
                 type="email"
-                placeholder="AllexFiller705842@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="sarah@thaylo.com"
+                value={form.email}
+                onChange={(e) => updateField('email', e.target.value)}
+                required
               />
             </Field>
           </div>
 
-          {/* Role & Assignment */}
           <p className="text-white text-base font-semibold border-b border-white/10 pb-3 mt-6">
             Role & Assignment
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <Field label="Role">
-              <SelectInput value={role} placeholder="Select Role" />
+            <Field label="Specialty">
+              <SelectInput
+                value={form.specialty}
+                onChange={(e) => updateField('specialty', e.target.value)}
+                placeholder="Select specialty"
+                options={SPECIALTY_OPTIONS}
+              />
             </Field>
             <Field label="Grade Level">
-              <SelectInput value={grade} placeholder="Select Grade" />
+              <SelectInput
+                value={form.gradeLevel}
+                onChange={(e) => updateField('gradeLevel', e.target.value)}
+                placeholder="Select grade"
+                options={GRADE_OPTIONS}
+              />
             </Field>
           </div>
 
           <div className="mt-4">
             <Field label="Status">
-              <SelectInput value={status} placeholder="Active" />
+              <div className="relative">
+                <select
+                  value={form.isActive}
+                  onChange={(e) => updateField('isActive', e.target.value)}
+                  className="w-full appearance-none px-4 py-3 pr-10 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
+                >
+                  <option value="true" className="bg-[#313044]">Active</option>
+                  <option value="false" className="bg-[#313044]">Inactive</option>
+                </select>
+                <ChevronDown
+                  size={16}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+                />
+              </div>
             </Field>
           </div>
 
-          {/* Footer */}
+          {error && <p className="mt-4 text-xs text-[#FF6F6F]">{error}</p>}
+
           <div className="grid grid-cols-2 gap-4 mt-7">
             <button
               type="button"
               onClick={onClose}
-              className="py-3 rounded-full bg-white/[0.05] text-white text-sm font-semibold hover:bg-white/[0.08] transition-colors"
+              disabled={isSubmitting}
+              className="py-3 rounded-full bg-white/[0.05] text-white text-sm font-semibold hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="py-3 rounded-full bg-[#00CED1] text-[#111023] text-sm font-semibold hover:bg-[#00B8BB] transition-colors"
+              disabled={isSubmitting}
+              className="py-3 rounded-full bg-[#00CED1] text-[#111023] text-sm font-semibold hover:bg-[#00B8BB] transition-colors disabled:opacity-50"
             >
-              Add Wayfinder
+              {isSubmitting ? 'Creating…' : 'Add Wayfinder'}
             </button>
           </div>
         </form>

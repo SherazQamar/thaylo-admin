@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Send, Plus } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
+import AssignChildModal from '../components/AssignChildModal'
 
 const QUICK_ACTIONS = [
   { label: 'Add Student' },
@@ -297,7 +299,7 @@ function RecentAlerts() {
   )
 }
 
-function QuickActions() {
+function QuickActions({ onAssignWayfinder }) {
   return (
     <div className="rounded-2xl bg-[#313044] p-6">
       <h3 className="text-white text-lg font-semibold mb-5">Quick Actions</h3>
@@ -307,6 +309,7 @@ function QuickActions() {
           <button
             key={a.label}
             type="button"
+            onClick={a.label === 'Assign Wayfinder' ? onAssignWayfinder : undefined}
             className="flex items-center gap-4 rounded-[12px] bg-white/[0.05] hover:bg-white/[0.08] transition-colors text-left"
             style={{ padding: '14px 24px' }}
           >
@@ -359,6 +362,8 @@ function RecentActivity() {
 }
 
 export default function AdminDashboard() {
+  const [assignOpen, setAssignOpen] = useState(false)
+
   return (
     <AdminLayout title="Admin Dashboard">
       <div className="space-y-2">
@@ -386,9 +391,11 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <QuickActions />
+        <QuickActions onAssignWayfinder={() => setAssignOpen(true)} />
         <RecentActivity />
       </div>
+
+      <AssignChildModal open={assignOpen} onClose={() => setAssignOpen(false)} />
     </AdminLayout>
   )
 }
