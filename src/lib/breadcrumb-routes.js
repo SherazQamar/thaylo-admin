@@ -7,6 +7,7 @@ const SUPER_ADMIN_ROOT = {
 const ADMIN_BREADCRUMBS = {
   '/admin-dashboard': [ADMIN_ROOT],
   '/parents': [ADMIN_ROOT, { href: '/parents', label: 'Parent Management' }],
+  '/students': [ADMIN_ROOT, { href: '/students', label: 'Student Management' }],
   '/wayfinders': [ADMIN_ROOT, { href: '/wayfinders', label: 'Wayfinder Management' }],
   '/reports': [ADMIN_ROOT, { href: '/reports', label: 'Reports' }],
   '/alerts': [ADMIN_ROOT, { href: '/alerts', label: 'Alerts Center' }],

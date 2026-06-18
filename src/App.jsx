@@ -5,6 +5,8 @@ import AdminSignIn from './pages/AdminSignIn'
 import AdminDashboard from './pages/AdminDashboard'
 import ParentManagement from './pages/ParentManagement'
 import WayfinderManagement from './pages/WayfinderManagement'
+import StudentManagement from './pages/StudentManagement'
+import StudentDetail from './pages/StudentDetail'
 import Reports from './pages/Reports'
 import AlertsCenter from './pages/AlertsCenter'
 import AlertInsights from './pages/AlertInsights'
@@ -47,6 +49,22 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
               <ParentManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
+              <StudentManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students/:id"
+          element={
+            <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
+              <StudentDetail />
             </ProtectedRoute>
           }
         />
