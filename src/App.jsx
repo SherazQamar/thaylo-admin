@@ -14,6 +14,7 @@ import Settings from './pages/Settings'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import AllUsersManagement from './pages/AllUsersManagement'
 import LearningSystem from './pages/LearningSystem'
+import OnboardingQA from './pages/OnboardingQA'
 import Insights from './pages/Insights'
 import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
 import {
@@ -131,6 +132,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
               <LearningSystem />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/onboarding"
+          element={
+            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
+              <OnboardingQA />
             </ProtectedRoute>
           }
         />

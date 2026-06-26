@@ -4,6 +4,7 @@ import {
   Users,
   GraduationCap,
   BarChart3,
+  MessageCircleQuestion,
   Cpu,
   FileText,
   Settings,
@@ -32,6 +33,12 @@ const NAV = [
     href: '/super-admin/learning',
     matchPaths: ['/super-admin/learning'],
     Icon: GraduationCap,
+  },
+  {
+    label: 'ONBOARDING Q&A',
+    href: '/super-admin/onboarding',
+    matchPaths: ['/super-admin/onboarding'],
+    Icon: MessageCircleQuestion,
   },
   {
     label: 'INSIGHTS',
