@@ -1,0 +1,427 @@
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Search, Pencil, Trash2, Eye, MessageCircleQuestion } from 'lucide-react'
+import SuperAdminLayout from '../components/SuperAdminLayout'
+import ListPagination from '../components/ListPagination'
+import OnboardingUploadWizard from '../components/OnboardingUploadWizard'
+import OnboardingWalkthroughModal from '../components/OnboardingWalkthroughModal'
+import { getApiErrorMessage } from '../lib/auth-api'
+import { useDebouncedValue } from '../lib/useDebouncedValue'
+import {
+  ONBOARDING_AUDIENCE_LABELS,
+  ONBOARDING_STATUS_LABELS,
+  ONBOARDING_TIMING_LABELS,
+  deleteOnboardingWalkthrough,
+  fetchOnboardingWalkthrough,
+  fetchOnboardingWalkthroughs,
+  onboardingQueryKeys,
+  updateOnboardingWalkthrough,
+} from '../lib/onboarding-api'
+
+const TIMING_TABS = [
+  { value: 'IMMEDIATE', label: 'Immediate', sub: 'Right after signup' },
+  { value: 'AFTER_TWO_WEEKS', label: 'After 2 weeks', sub: 'Follow-up onboarding' },
+]
+
+const AUDIENCE_FILTERS = [
+  { value: '', label: 'All audiences' },
+  { value: 'PARENT', label: 'Parent' },
+  { value: 'STUDENT', label: 'Student' },
+  { value: 'COMBINED', label: 'Combined' },
+]
+
+function StatusBadge({ status }) {
+  const styles = {
+    DRAFT: 'border-white/20 text-white/60 bg-white/5',
+    PUBLISHED: 'border-[#00CED1] text-[#00CED1] bg-[#00CED1]/10',
+    ARCHIVED: 'border-[#FF7B7B]/40 text-[#FF7B7B] bg-[#FF7B7B]/10',
+  }
+
+  return (
+    <span
+      className={
+        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ' +
+        (styles[status] ?? styles.DRAFT)
+      }
+    >
+      {ONBOARDING_STATUS_LABELS[status] ?? status}
+    </span>
+  )
+}
+
+function AudienceBadge({ audience }) {
+  const styles = {
+    PARENT: 'text-[#60D624]',
+    STUDENT: 'text-[#00CED1]',
+    COMBINED: 'text-[#FFC542]',
+  }
+
+  return (
+    <span className={'text-sm font-medium ' + (styles[audience] ?? 'text-white/70')}>
+      {ONBOARDING_AUDIENCE_LABELS[audience] ?? audience}
+    </span>
+  )
+}
+
+function ViewContentModal({ open, item, onClose }) {
+  if (!open || !item) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+        aria-label="Close"
+      />
+      <div
+        className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl p-6"
+        style={{ backgroundColor: '#252338' }}
+      >
+        <h3 className="text-white text-xl font-bold">{item.title}</h3>
+        <p className="text-white/50 text-sm mt-1 mb-4">
+          {ONBOARDING_TIMING_LABELS[item.timing]} · {ONBOARDING_AUDIENCE_LABELS[item.audience]}
+        </p>
+        {item.tone && (
+          <p className="text-white/60 text-sm mb-4">
+            <span className="text-white/40">Tone:</span> {item.tone}
+          </p>
+        )}
+        <pre className="whitespace-pre-wrap text-white/80 text-sm leading-relaxed rounded-2xl bg-black/20 p-4">
+          {item.content}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
+export default function OnboardingQA() {
+  const queryClient = useQueryClient()
+  const [timingTab, setTimingTab] = useState('IMMEDIATE')
+  const [audienceFilter, setAudienceFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const debouncedSearch = useDebouncedValue(search, 300)
+
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [viewItem, setViewItem] = useState(null)
+  const [formError, setFormError] = useState('')
+
+  const listParams = useMemo(
+    () => ({
+      page,
+      timing: timingTab,
+      ...(audienceFilter ? { audience: audienceFilter } : {}),
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    }),
+    [page, timingTab, audienceFilter, debouncedSearch],
+  )
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: onboardingQueryKeys.list(listParams),
+    queryFn: () => fetchOnboardingWalkthroughs(listParams),
+  })
+
+  const { data: editingItem, isFetching: isLoadingEdit } = useQuery({
+    queryKey: onboardingQueryKeys.detail(editingId),
+    queryFn: () => fetchOnboardingWalkthrough(editingId),
+    enabled: modalOpen && !!editingId,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateOnboardingWalkthrough(id, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'onboarding-walkthroughs'] })
+      setModalOpen(false)
+      setEditingId(null)
+      setFormError('')
+    },
+    onError: (err) => setFormError(getApiErrorMessage(err)),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteOnboardingWalkthrough,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'onboarding-walkthroughs'] })
+    },
+  })
+
+  const items = data?.items ?? []
+  const meta = data?.meta ?? null
+
+  function openCreate() {
+    setWizardOpen(true)
+  }
+
+  function openEdit(id) {
+    setEditingId(id)
+    setFormError('')
+    setModalOpen(true)
+  }
+
+  async function handleSubmit(payload) {
+    if (editingId) {
+      await updateMutation.mutateAsync({ id: editingId, payload })
+    }
+  }
+
+  async function handleDelete(item) {
+    const message =
+      item.status === 'DRAFT'
+        ? `Delete "${item.title}"? This cannot be undone.`
+        : `Archive "${item.title}"? Published walkthroughs are archived, not permanently deleted.`
+
+    if (!window.confirm(message)) return
+    await deleteMutation.mutateAsync(item.id)
+  }
+
+  return (
+    <SuperAdminLayout title="Onboarding Q&A">
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#00CED1]/10 flex items-center justify-center">
+                <MessageCircleQuestion size={22} className="text-[#00CED1]" />
+              </div>
+              <div>
+                <h2 className="text-white text-3xl font-bold tracking-tight">Onboarding Q&A</h2>
+                <p className="text-white/50 text-sm mt-1">
+                  Manage AI walkthrough content by timing, audience, and sequence.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] text-sm font-semibold px-5 py-2.5 hover:bg-[#00B8BB]"
+          >
+            <Plus size={16} />
+            Add from document
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {TIMING_TABS.map((tab) => {
+            const active = timingTab === tab.value
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setTimingTab(tab.value)
+                  setPage(1)
+                }}
+                className={
+                  'rounded-2xl p-5 text-left border transition-all ' +
+                  (active
+                    ? 'border-[#00CED1] bg-[#00CED1]/10'
+                    : 'border-white/5 bg-[#313044] hover:border-white/10')
+                }
+              >
+                <p className={active ? 'text-[#00CED1] font-semibold' : 'text-white font-semibold'}>
+                  {tab.label}
+                </p>
+                <p className="text-white/50 text-sm mt-1">{tab.sub}</p>
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          className="rounded-2xl p-5 lg:p-6"
+          style={{ backgroundColor: '#313044' }}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-5">
+            <div className="relative flex-1">
+              <Search
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+              />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                placeholder="Search by title or slug..."
+                className="w-full pl-11 pr-4 py-3 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40 placeholder:text-white/30"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {AUDIENCE_FILTERS.map((filter) => {
+                const active = audienceFilter === filter.value
+                return (
+                  <button
+                    key={filter.label}
+                    type="button"
+                    onClick={() => {
+                      setAudienceFilter(filter.value)
+                      setPage(1)
+                    }}
+                    className={
+                      'rounded-full px-4 py-2 text-xs font-semibold transition-colors ' +
+                      (active
+                        ? 'bg-[#00CED1] text-[#111023]'
+                        : 'bg-white/5 text-white/60 hover:text-white')
+                    }
+                  >
+                    {filter.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {isError && (
+            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm mb-4">
+              {getApiErrorMessage(error)}
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Title
+                  </th>
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Audience
+                  </th>
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Order
+                  </th>
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Est. min
+                  </th>
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Status
+                  </th>
+                  <th className="py-3 px-4 text-right text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-white/40 text-sm">
+                      Loading walkthroughs…
+                    </td>
+                  </tr>
+                )}
+
+                {!isLoading && items.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-white/40 text-sm">
+                      No walkthroughs yet for this timing. Click &quot;Add walkthrough&quot; to create one.
+                    </td>
+                  </tr>
+                )}
+
+                {!isLoading &&
+                  items.map((item) => (
+                    <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                      <td className="py-4 px-4">
+                        <p className="text-white font-semibold">{item.title}</p>
+                        <p className="text-white/40 text-xs mt-0.5">{item.slug}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <AudienceBadge audience={item.audience} />
+                      </td>
+                      <td className="py-4 px-4 text-white/70 text-sm">{item.sortOrder}</td>
+                      <td className="py-4 px-4 text-white/70 text-sm">
+                        {item.estimatedMinutes ?? '—'}
+                      </td>
+                      <td className="py-4 px-4">
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {item.status !== 'ARCHIVED' && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item.id)}
+                              className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
+                              aria-label="Edit"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const detail = await fetchOnboardingWalkthrough(item.id)
+                              setViewItem(detail)
+                            }}
+                            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
+                            aria-label="View content"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          {item.status !== 'ARCHIVED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item)}
+                              disabled={deleteMutation.isPending}
+                              className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#FF7B7B]"
+                              aria-label="Delete or archive"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          <ListPagination
+            meta={meta}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            itemLabel="walkthroughs"
+          />
+        </div>
+      </div>
+
+      <OnboardingUploadWizard
+        open={wizardOpen}
+        defaultTiming={timingTab}
+        onClose={() => setWizardOpen(false)}
+        onPublished={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['admin', 'onboarding-walkthroughs'] })
+        }}
+      />
+
+      <OnboardingWalkthroughModal
+        open={modalOpen}
+        mode="edit"
+        initial={editingItem}
+        defaultTiming={timingTab}
+        onClose={() => {
+          setModalOpen(false)
+          setEditingId(null)
+          setFormError('')
+        }}
+        onSubmit={handleSubmit}
+        isSubmitting={updateMutation.isPending || isLoadingEdit}
+        error={formError}
+      />
+
+      <ViewContentModal
+        open={!!viewItem}
+        item={viewItem}
+        onClose={() => setViewItem(null)}
+      />
+    </SuperAdminLayout>
+  )
+}
