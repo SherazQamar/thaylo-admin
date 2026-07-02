@@ -114,7 +114,6 @@ function PlatformActivityChart() {
   ]
 
   const Y_LABELS = [60, 20, -20, -60]
-  const ROW_H = 36
 
   return (
     <div

@@ -6,7 +6,7 @@ import { getAdminBreadcrumbs } from '../lib/breadcrumb-routes'
 
 export default function AdminLayout({
   title = 'Admin Dashboard',
-  userSubtitle,
+  userSubtitle: _userSubtitle,
   breadcrumbs,
   children,
 }) {
