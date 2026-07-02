@@ -6,11 +6,24 @@ body,
   min-height: 100svh;
 }
 
-body {
+html {
   cursor: default;
 }
 
-/* Arrow cursor on regular text; pointer on interactive elements */
+body {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Inherit cursor from parent so static text never falls back to I-beam (auto) */
+*,
+*::before,
+*::after {
+  cursor: inherit;
+}
+
+/* Pointer on interactive elements */
 a[href],
 button:not(:disabled),
 label[for],
@@ -27,7 +40,62 @@ input[type="file"],
   cursor: pointer;
 }
 
+/* Text cursor + selection only on real editable fields */
 textarea,
-input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[contenteditable="true"],
+.select-text {
   cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Themed scrollbars — page + scrollable panels */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) #111023;
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #111023;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  border: 2px solid #111023;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 206, 209, 0.55);
+}
+
+.scrollbar-thaylo {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) #252338;
+}
+
+.scrollbar-thaylo::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thaylo::-webkit-scrollbar-track {
+  background: #252338;
+  border-radius: 9999px;
+}
+
+.scrollbar-thaylo::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  border: 2px solid #252338;
+}
+
+.scrollbar-thaylo::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 206, 209, 0.5);
 }

@@ -66,7 +66,7 @@ function isActiveItem(pathname, item) {
 
 export default function Sidebar() {
   const { pathname } = useLocation()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed] = useState(false)
 
   return (
     <>
