@@ -1,0 +1,249 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, CheckCircle2, Info, Sparkles } from 'lucide-react'
+import SuperAdminLayout from '../components/SuperAdminLayout'
+import ConfirmModal from '../components/ConfirmModal'
+import CurriculumLessonPreview from '../components/CurriculumLessonPreview'
+import CurriculumClassPreviewModal from '../components/CurriculumClassPreviewModal'
+import CurriculumRefinementChat from '../components/CurriculumRefinementChat'
+import { getApiErrorMessage } from '../lib/auth-api'
+import {
+  CURRICULUM_BETA_INFO_MESSAGE,
+  CURRICULUM_STATUS_LABELS,
+  curriculumQueryKeys,
+  fetchCurriculum,
+  isCurriculumMockMode,
+  refineCurriculumWithAi,
+  updateCurriculumStatus,
+} from '../lib/curriculum-api'
+
+const SUPER_ADMIN_ROOT = {
+  href: '/super-admin/dashboard',
+  label: 'Super Admin Dashboard',
+}
+
+function StatusBadge({ status }) {
+  const styles = {
+    DRAFT: 'border-white/20 text-white/60 bg-white/5',
+    IN_REVIEW: 'border-[#FFC542]/40 text-[#FFC542] bg-[#FFC542]/10',
+    PUBLISHED: 'border-[#00CED1] text-[#00CED1] bg-[#00CED1]/10',
+    ARCHIVED: 'border-[#FF7B7B]/40 text-[#FF7B7B] bg-[#FF7B7B]/10',
+  }
+
+  return (
+    <span
+      className={
+        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ' +
+        (styles[status] ?? styles.DRAFT)
+      }
+    >
+      {CURRICULUM_STATUS_LABELS[status] ?? status}
+    </span>
+  )
+}
+
+export default function CurriculumRefinement() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const queryClient = useQueryClient()
+  const curriculumId = Number(id)
+  const [classPreviewOpen, setClassPreviewOpen] = useState(false)
+  const [previewLessonIndex, setPreviewLessonIndex] = useState(0)
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
+
+  const openClassPreview = (lessonIndex = 0) => {
+    setPreviewLessonIndex(lessonIndex)
+    setClassPreviewOpen(true)
+  }
+
+  const breadcrumbs = useMemo(
+    () => [
+      SUPER_ADMIN_ROOT,
+      { href: '/super-admin/curriculum', label: 'Curriculum' },
+      { href: `/super-admin/curriculum/${id}`, label: 'Class setup' },
+    ],
+    [id],
+  )
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: curriculumQueryKeys.detail(curriculumId),
+    queryFn: () => fetchCurriculum(curriculumId),
+    enabled: Number.isFinite(curriculumId),
+  })
+
+  useEffect(() => {
+    if (location.state?.previewClass && data?.scriptJson) {
+      openClassPreview(0)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, data?.scriptJson, navigate, location.pathname])
+
+  const refineMutation = useMutation({
+    mutationFn: (message) => refineCurriculumWithAi(curriculumId, { message }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: curriculumQueryKeys.detail(curriculumId) })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum'] })
+    },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (status) => updateCurriculumStatus(curriculumId, { status }),
+    onSuccess: async (_data, status) => {
+      await queryClient.invalidateQueries({ queryKey: curriculumQueryKeys.detail(curriculumId) })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum'] })
+      if (status === 'PUBLISHED') {
+        setPublishConfirmOpen(false)
+      }
+    },
+  })
+
+  const isPublished = data?.status === 'PUBLISHED'
+  const isArchived = data?.status === 'ARCHIVED'
+  const chatDisabled = isPublished || isArchived
+
+  return (
+    <SuperAdminLayout title="Curriculum — Class setup" breadcrumbs={breadcrumbs}>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <Link
+              to="/super-admin/curriculum"
+              className="mt-1 w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-white shrink-0"
+              aria-label="Back to curriculum list"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-white text-2xl font-bold">Class setup</h2>
+                {data?.status && <StatusBadge status={data.status} />}
+                {data?.version != null && (
+                  <span className="text-white/40 text-xs">v{data.version}</span>
+                )}
+              </div>
+              <p className="text-white/50 text-sm mt-1">
+                Review extracted content on the left. Use Preview class on each lesson to see the
+                15-minute experience. Improve with AI only when you want edits.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#00CED1]/30 bg-[#00CED1]/10 px-4 py-3 text-[#00CED1] text-sm flex items-start gap-2">
+            <Info size={16} className="shrink-0 mt-0.5" />
+            <span>
+              <strong>Class setup</strong> — content is extracted from your document as-is.
+              AI training lives under <strong>AI Control</strong>. {CURRICULUM_BETA_INFO_MESSAGE}
+            </span>
+          </div>
+
+          {isCurriculumMockMode() && (
+            <div className="rounded-2xl border border-[#FFC542]/30 bg-[#FFC542]/10 px-4 py-3 text-[#FFC542] text-sm flex items-center gap-2">
+              <Sparkles size={16} className="shrink-0" />
+              Mock mode — connect backend for real document extraction.
+            </div>
+          )}
+
+          {statusMutation.isError && (
+            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
+              {getApiErrorMessage(statusMutation.error)}
+            </div>
+          )}
+
+          {isError && (
+            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
+              {getApiErrorMessage(error)}
+              <button
+                type="button"
+                onClick={() => navigate('/super-admin/curriculum')}
+                className="block mt-2 text-[#00CED1] underline text-xs"
+              >
+                Back to list
+              </button>
+            </div>
+          )}
+        </div>
+
+        {isLoading && (
+          <div
+            className="rounded-2xl p-10 text-center text-white/40 text-sm"
+            style={{ backgroundColor: '#313044' }}
+          >
+            Loading class setup…
+          </div>
+        )}
+
+        {data && (
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+            <div
+              className="xl:col-span-3 rounded-2xl p-5 lg:p-6"
+              style={{ backgroundColor: '#313044' }}
+            >
+              <CurriculumLessonPreview
+                scriptJson={data.scriptJson}
+                onPreviewClass={openClassPreview}
+                status={data.status}
+                isArchived={isArchived}
+                statusPending={statusMutation.isPending}
+                onSubmitForReview={() => statusMutation.mutate('IN_REVIEW')}
+                onPublish={() => setPublishConfirmOpen(true)}
+              />
+            </div>
+
+            <div className="xl:col-span-2 xl:sticky xl:top-24 self-start w-full xl:h-[calc(100dvh-6.5rem)] flex flex-col min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col">
+                <CurriculumRefinementChat
+                  messages={data.refinementMessages ?? []}
+                  onSend={(message) => refineMutation.mutateAsync(message)}
+                  isSending={refineMutation.isPending}
+                  disabled={chatDisabled}
+                />
+              </div>
+              {refineMutation.isError && (
+                <p className="shrink-0 text-[#FF7B7B] text-xs mt-2 px-1">
+                  {getApiErrorMessage(refineMutation.error)}
+                </p>
+              )}
+              {chatDisabled && (
+                <p className="shrink-0 text-white/40 text-xs mt-2 px-1">
+                  {isPublished
+                    ? 'Published curriculum is read-only.'
+                    : 'This curriculum is archived.'}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {data?.scriptJson && (
+        <CurriculumClassPreviewModal
+          open={classPreviewOpen}
+          onClose={() => setClassPreviewOpen(false)}
+          scriptJson={data.scriptJson}
+          title={data.title}
+          initialLessonIndex={previewLessonIndex}
+        />
+      )}
+
+      <ConfirmModal
+        open={publishConfirmOpen}
+        onClose={() => {
+          if (!statusMutation.isPending) setPublishConfirmOpen(false)
+        }}
+        onConfirm={() => statusMutation.mutate('PUBLISHED')}
+        title="Publish curriculum?"
+        message="Students can be assigned to this curriculum after publishing. Further edits will be locked."
+        confirmLabel="Publish"
+        variant="primary"
+        isLoading={statusMutation.isPending}
+        icon={
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#00CED1]/15">
+            <CheckCircle2 size={28} className="text-[#00CED1]" />
+          </div>
+        }
+      />
+    </SuperAdminLayout>
+  )
+}

@@ -15,7 +15,10 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import AllUsersManagement from './pages/AllUsersManagement'
 import LearningSystem from './pages/LearningSystem'
 import OnboardingQA from './pages/OnboardingQA'
+import CurriculumList from './pages/CurriculumList'
+import CurriculumRefinement from './pages/CurriculumRefinement'
 import Insights from './pages/Insights'
+import AiControl from './pages/AiControl'
 import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
 import {
   ADMIN_ONLY_ROLES,
@@ -144,6 +147,22 @@ function App() {
           }
         />
         <Route
+          path="/super-admin/curriculum"
+          element={
+            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
+              <CurriculumList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/curriculum/:id"
+          element={
+            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
+              <CurriculumRefinement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/super-admin/insights"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
@@ -155,7 +174,7 @@ function App() {
           path="/super-admin/ai"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="AI Control" />
+              <AiControl />
             </ProtectedRoute>
           }
         />

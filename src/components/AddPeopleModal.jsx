@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, ChevronDown } from 'lucide-react'
+import { X } from 'lucide-react'
 
 export default function AddPeopleModal({ open, onClose, onInvite }) {
   const [email, setEmail] = useState('')
@@ -61,15 +61,21 @@ export default function AddPeopleModal({ open, onClose, onInvite }) {
           <label className="block text-white text-sm font-semibold mb-2">
             Role
           </label>
-          <button
-            type="button"
-            className="w-full text-left px-4 py-3.5 rounded-full bg-white/[0.05] text-sm flex items-center justify-between border border-transparent hover:bg-white/[0.07]"
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="w-full px-4 py-3.5 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
           >
-            <span className={role ? 'text-white' : 'text-white/40'}>
-              {role || 'Select Role'}
-            </span>
-            <ChevronDown size={16} className="text-white/40" />
-          </button>
+            <option value="" className="bg-[#313044] text-white/40">
+              Select Role
+            </option>
+            <option value="wayfinder" className="bg-[#313044]">
+              Wayfinder
+            </option>
+            <option value="admin" className="bg-[#313044]">
+              Admin
+            </option>
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mt-7">

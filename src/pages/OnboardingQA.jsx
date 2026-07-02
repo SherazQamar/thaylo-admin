@@ -27,7 +27,14 @@ const AUDIENCE_FILTERS = [
   { value: '', label: 'All audiences' },
   { value: 'PARENT', label: 'Parent' },
   { value: 'STUDENT', label: 'Student' },
-  { value: 'COMBINED', label: 'Combined' },
+  { value: 'COMBINED', label: 'Parent + Student' },
+]
+
+const STATUS_FILTERS = [
+  { value: '', label: 'All statuses' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'ARCHIVED', label: 'Archived' },
 ]
 
 function StatusBadge({ status }) {
@@ -51,16 +58,55 @@ function StatusBadge({ status }) {
 
 function AudienceBadge({ audience }) {
   const styles = {
-    PARENT: 'text-[#60D624]',
-    STUDENT: 'text-[#00CED1]',
-    COMBINED: 'text-[#FFC542]',
+    PARENT: 'border-[#60D624]/30 text-[#60D624] bg-[#60D624]/10',
+    STUDENT: 'border-[#00CED1]/30 text-[#00CED1] bg-[#00CED1]/10',
+    COMBINED: 'border-[#FFC542]/30 text-[#FFC542] bg-[#FFC542]/10',
   }
 
   return (
-    <span className={'text-sm font-medium ' + (styles[audience] ?? 'text-white/70')}>
+    <span
+      className={
+        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ' +
+        (styles[audience] ?? 'border-white/10 text-white/70 bg-white/5')
+      }
+    >
       {ONBOARDING_AUDIENCE_LABELS[audience] ?? audience}
     </span>
   )
+}
+
+function AudienceBadges({ item }) {
+  const audiences = item.audiences?.length
+    ? item.audiences
+    : item.audience
+      ? [item.audience]
+      : []
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {audiences.map((audience) => (
+        <AudienceBadge key={audience} audience={audience} />
+      ))}
+    </div>
+  )
+}
+
+function formatEstimatedMinutes(item) {
+  if (item.parentEstimatedMinutes != null && item.estimatedMinutes != null) {
+    return `${item.estimatedMinutes} / ${item.parentEstimatedMinutes}`
+  }
+
+  return item.estimatedMinutes ?? '—'
+}
+
+function formatAudienceLabel(item) {
+  const audiences = item.audiences?.length
+    ? item.audiences
+    : item.audience
+      ? [item.audience]
+      : []
+
+  return audiences.map((audience) => ONBOARDING_AUDIENCE_LABELS[audience] ?? audience).join(' · ')
 }
 
 function ViewContentModal({ open, item, onClose }) {
@@ -80,7 +126,7 @@ function ViewContentModal({ open, item, onClose }) {
       >
         <h3 className="text-white text-xl font-bold">{item.title}</h3>
         <p className="text-white/50 text-sm mt-1 mb-4">
-          {ONBOARDING_TIMING_LABELS[item.timing]} · {ONBOARDING_AUDIENCE_LABELS[item.audience]}
+          {ONBOARDING_TIMING_LABELS[item.timing]} · {formatAudienceLabel(item)}
         </p>
         {item.tone && (
           <p className="text-white/60 text-sm mb-4">
@@ -99,6 +145,7 @@ export default function OnboardingQA() {
   const queryClient = useQueryClient()
   const [timingTab, setTimingTab] = useState('IMMEDIATE')
   const [audienceFilter, setAudienceFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const debouncedSearch = useDebouncedValue(search, 300)
@@ -114,9 +161,10 @@ export default function OnboardingQA() {
       page,
       timing: timingTab,
       ...(audienceFilter ? { audience: audienceFilter } : {}),
+      ...(statusFilter ? { status: statusFilter } : {}),
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
     }),
-    [page, timingTab, audienceFilter, debouncedSearch],
+    [page, timingTab, audienceFilter, statusFilter, debouncedSearch],
   )
 
   const { data, isLoading, isError, error } = useQuery({
@@ -155,8 +203,9 @@ export default function OnboardingQA() {
     setWizardOpen(true)
   }
 
-  function openEdit(id) {
-    setEditingId(id)
+  function openEdit(item) {
+    const editId = item.studentWalkthroughId ?? item.parentWalkthroughId ?? item.id
+    setEditingId(editId)
     setFormError('')
     setModalOpen(true)
   }
@@ -168,10 +217,15 @@ export default function OnboardingQA() {
   }
 
   async function handleDelete(item) {
+    const isCombined = (item.audiences?.length ?? 0) > 1 || item.combinedGroupKey
     const message =
       item.status === 'DRAFT'
-        ? `Delete "${item.title}"? This cannot be undone.`
-        : `Archive "${item.title}"? Published walkthroughs are archived, not permanently deleted.`
+        ? isCombined
+          ? `Delete "${item.title}" for both parent and student? This cannot be undone.`
+          : `Delete "${item.title}"? This cannot be undone.`
+        : isCombined
+          ? `Archive "${item.title}" for both parent and student? Published walkthroughs are archived, not permanently deleted.`
+          : `Archive "${item.title}"? Published walkthroughs are archived, not permanently deleted.`
 
     if (!window.confirm(message)) return
     await deleteMutation.mutateAsync(item.id)
@@ -278,6 +332,30 @@ export default function OnboardingQA() {
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-2 mb-5">
+            {STATUS_FILTERS.map((filter) => {
+              const active = statusFilter === filter.value
+              return (
+                <button
+                  key={filter.label}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(filter.value)
+                    setPage(1)
+                  }}
+                  className={
+                    'rounded-full px-4 py-2 text-xs font-semibold transition-colors ' +
+                    (active
+                      ? 'bg-white text-[#111023]'
+                      : 'bg-white/5 text-white/60 hover:text-white')
+                  }
+                >
+                  {filter.label}
+                </button>
+              )
+            })}
+          </div>
+
           {isError && (
             <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm mb-4">
               {getApiErrorMessage(error)}
@@ -320,24 +398,24 @@ export default function OnboardingQA() {
                 {!isLoading && items.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-white/40 text-sm">
-                      No walkthroughs yet for this timing. Click &quot;Add walkthrough&quot; to create one.
+                      No walkthroughs match these filters. Try another audience, status, or search term.
                     </td>
                   </tr>
                 )}
 
                 {!isLoading &&
                   items.map((item) => (
-                    <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                    <tr key={item.combinedGroupKey ?? item.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                       <td className="py-4 px-4">
                         <p className="text-white font-semibold">{item.title}</p>
                         <p className="text-white/40 text-xs mt-0.5">{item.slug}</p>
                       </td>
                       <td className="py-4 px-4">
-                        <AudienceBadge audience={item.audience} />
+                        <AudienceBadges item={item} />
                       </td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.sortOrder}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">
-                        {item.estimatedMinutes ?? '—'}
+                        {formatEstimatedMinutes(item)}
                       </td>
                       <td className="py-4 px-4">
                         <StatusBadge status={item.status} />
@@ -347,7 +425,7 @@ export default function OnboardingQA() {
                           {item.status !== 'ARCHIVED' && (
                             <button
                               type="button"
-                              onClick={() => openEdit(item.id)}
+                              onClick={() => openEdit(item)}
                               className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
                               aria-label="Edit"
                             >
@@ -357,8 +435,15 @@ export default function OnboardingQA() {
                           <button
                             type="button"
                             onClick={async () => {
-                              const detail = await fetchOnboardingWalkthrough(item.id)
-                              setViewItem(detail)
+                              const viewId =
+                                item.studentWalkthroughId ??
+                                item.parentWalkthroughId ??
+                                item.id
+                              const detail = await fetchOnboardingWalkthrough(viewId)
+                              setViewItem({
+                                ...detail,
+                                audiences: item.audiences,
+                              })
                             }}
                             className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
                             aria-label="View content"

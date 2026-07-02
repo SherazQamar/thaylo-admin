@@ -7,6 +7,7 @@ import {
   MessageCircleQuestion,
   Cpu,
   FileText,
+  BookOpen,
   Settings,
   ShieldCheck,
   LifeBuoy,
@@ -33,6 +34,12 @@ const NAV = [
     href: '/super-admin/learning',
     matchPaths: ['/super-admin/learning'],
     Icon: GraduationCap,
+  },
+  {
+    label: 'CURRICULUM',
+    href: '/super-admin/curriculum',
+    matchPaths: ['/super-admin/curriculum'],
+    Icon: BookOpen,
   },
   {
     label: 'ONBOARDING Q&A',
@@ -85,7 +92,9 @@ const NAV = [
 ]
 
 function isActiveItem(pathname, item) {
-  return item.matchPaths.some((p) => pathname === p)
+  return item.matchPaths.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  )
 }
 
 export default function SuperAdminSidebar() {
