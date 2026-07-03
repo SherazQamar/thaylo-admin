@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Cpu, Play, Save, Volume2 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
@@ -196,6 +196,8 @@ export default function AiControl() {
   const [statusMessage, setStatusMessage] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(null)
   const [isTestingVoice, setIsTestingVoice] = useState(false)
+  const [voiceTestPhase, setVoiceTestPhase] = useState(null)
+  const voicePreviewRef = useRef(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: aiSettingsQueryKeys.detail(),
@@ -215,12 +217,11 @@ export default function AiControl() {
   const freeVoices = voiceCatalog?.freeVoices?.length
     ? voiceCatalog.freeVoices
     : FREE_TIER_FALLBACK_CATALOG.freeVoices
-  const paidVoices = voiceCatalog?.paidVoices ?? []
   const clientVoice = voiceCatalog?.clientVoice ?? FREE_TIER_FALLBACK_CATALOG.clientVoice
 
   const allSelectableVoices = useMemo(
-    () => [...freeVoices, ...paidVoices, clientVoice],
-    [freeVoices, paidVoices, clientVoice],
+    () => [...freeVoices, clientVoice],
+    [freeVoices, clientVoice],
   )
 
   const selectedVoice = useMemo(
@@ -252,7 +253,20 @@ export default function AiControl() {
 
     loadVoices()
     window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+      window.speechSynthesis.cancel()
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      const preview = voicePreviewRef.current
+      if (preview?.type === 'audio') {
+        preview.audio.pause()
+        URL.revokeObjectURL(preview.url)
+      }
+    }
   }, [])
 
   const isDirty = useMemo(() => {
@@ -363,8 +377,21 @@ export default function AiControl() {
   }
 
   async function handleTestVoice() {
-    if (!form) return
+    if (!form || isTestingVoice) return
+
+    function stopCurrentPreview() {
+      if (voicePreviewRef.current?.type === 'audio') {
+        voicePreviewRef.current.audio.pause()
+        URL.revokeObjectURL(voicePreviewRef.current.url)
+      } else if (voicePreviewRef.current?.type === 'speech') {
+        window.speechSynthesis?.cancel()
+      }
+      voicePreviewRef.current = null
+    }
+
+    stopCurrentPreview()
     setIsTestingVoice(true)
+    setVoiceTestPhase('loading')
     setStatusMessage(null)
 
     try {
@@ -375,9 +402,22 @@ export default function AiControl() {
         })
         const url = URL.createObjectURL(blob)
         const audio = new Audio(url)
-        audio.onended = () => URL.revokeObjectURL(url)
-        audio.onerror = () => URL.revokeObjectURL(url)
-        await audio.play()
+        voicePreviewRef.current = { type: 'audio', audio, url }
+
+        setVoiceTestPhase('playing')
+        await new Promise((resolve, reject) => {
+          audio.onended = () => {
+            URL.revokeObjectURL(url)
+            voicePreviewRef.current = null
+            resolve()
+          }
+          audio.onerror = () => {
+            URL.revokeObjectURL(url)
+            voicePreviewRef.current = null
+            reject(new Error('Could not play the voice preview.'))
+          }
+          audio.play().catch(reject)
+        })
         setStatusMessage('Voice preview played using ElevenLabs.')
         return
       }
@@ -394,12 +434,26 @@ export default function AiControl() {
       utterance.lang = form.lang
       const selected = browserVoices.find((voice) => voice.name === form.browserVoiceName)
       if (selected) utterance.voice = selected
-      window.speechSynthesis.speak(utterance)
+      voicePreviewRef.current = { type: 'speech', utterance }
+
+      setVoiceTestPhase('playing')
+      await new Promise((resolve) => {
+        utterance.onend = () => {
+          voicePreviewRef.current = null
+          resolve()
+        }
+        utterance.onerror = () => {
+          voicePreviewRef.current = null
+          resolve()
+        }
+        window.speechSynthesis.speak(utterance)
+      })
       setStatusMessage('Voice preview played using browser TTS.')
     } catch (err) {
       setStatusMessage(await getAiVoiceTestErrorMessage(err))
     } finally {
       setIsTestingVoice(false)
+      setVoiceTestPhase(null)
     }
   }
 
@@ -583,15 +637,6 @@ export default function AiControl() {
                           </option>
                         ))}
                       </optgroup>
-                      {paidVoices.length > 0 && (
-                        <optgroup label="Other voices (may need paid plan)">
-                          {paidVoices.map((voice) => (
-                            <option key={voice.voiceId} value={voice.voiceId}>
-                              {voice.name} ({voice.category})
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
                       <optgroup label="Client voice">
                         <option value={form.reservedClientVoiceId}>
                           {form.reservedClientVoiceName} — after upgrade
@@ -708,10 +753,14 @@ export default function AiControl() {
                 type="button"
                 onClick={handleTestVoice}
                 disabled={isTestingVoice || saveMutation.isPending}
-                className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#00CED1]/40 bg-[#00CED1]/10 px-5 py-2.5 text-sm font-semibold text-[#00CED1] hover:bg-[#00CED1]/20 disabled:opacity-50"
+                className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#00CED1]/40 bg-[#00CED1]/10 px-5 py-2.5 text-sm font-semibold text-[#00CED1] hover:bg-[#00CED1]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Play className="w-4 h-4" />
-                {isTestingVoice ? 'Playing…' : 'Test voice'}
+                {voiceTestPhase === 'loading'
+                  ? 'Generating voice…'
+                  : voiceTestPhase === 'playing'
+                    ? 'Playing…'
+                    : 'Test voice'}
               </button>
             </div>
           </div>
