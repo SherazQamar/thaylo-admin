@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Cpu, Play, Save, Volume2 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
+import InfoTooltip from '../components/InfoTooltip'
 import { getApiErrorMessage } from '../lib/auth-api'
 import {
   AI_SETTINGS_FIELD_RANGES,
@@ -38,9 +39,12 @@ function Card({ title, description, children }) {
   )
 }
 
-function Label({ children }) {
+function Label({ children, info }) {
   return (
-    <span className="block text-white text-sm font-semibold mb-2">{children}</span>
+    <span className="flex items-center gap-1.5 mb-2">
+      <span className="block text-white text-sm font-semibold">{children}</span>
+      {info ? <InfoTooltip content={info} label={`About ${children}`} align="left" /> : null}
+    </span>
   )
 }
 
@@ -79,11 +83,11 @@ function SelectInput({ children, ...rest }) {
   )
 }
 
-function RangeField({ label, value, min, max, step, onChange, hint }) {
+function RangeField({ label, value, min, max, step, onChange, hint, info }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <Label>{label}</Label>
+        <Label info={info}>{label}</Label>
         <span className="text-[#00CED1] text-sm font-semibold">{value}</span>
       </div>
       <input
@@ -513,7 +517,7 @@ export default function AiControl() {
         >
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <Label>Assistant name</Label>
+              <Label>Instructor Name</Label>
               <TextInput
                 value={form.personaName}
                 onChange={(event) => updateField('personaName', event.target.value)}
@@ -679,6 +683,7 @@ export default function AiControl() {
                     step={ranges.elevenlabs.stability.step}
                     onChange={(value) => updateField('stability', value)}
                     hint={ranges.elevenlabs.stability.hint}
+                    info={ranges.elevenlabs.stability.info}
                   />
                   <RangeField
                     label={ranges.elevenlabs.similarityBoost.label}
@@ -688,6 +693,7 @@ export default function AiControl() {
                     step={ranges.elevenlabs.similarityBoost.step}
                     onChange={(value) => updateField('similarityBoost', value)}
                     hint={ranges.elevenlabs.similarityBoost.hint}
+                    info={ranges.elevenlabs.similarityBoost.info}
                   />
                 </div>
               </>
@@ -718,6 +724,7 @@ export default function AiControl() {
                   step={ranges.elevenlabs.speed.step}
                   onChange={(value) => updateField('rate', value)}
                   hint={ranges.elevenlabs.speed.hint}
+                  info={ranges.elevenlabs.speed.info}
                 />
               ) : (
                 <>
@@ -778,6 +785,7 @@ export default function AiControl() {
               max={ranges.pacing.pauseMs.max}
               step={ranges.pacing.pauseMs.step}
               onChange={(value) => updateField('pauseMs', value)}
+              info={ranges.pacing.pauseMs.info}
             />
             <RangeField
               label={ranges.pacing.wordMs.label}
@@ -787,6 +795,7 @@ export default function AiControl() {
               step={ranges.pacing.wordMs.step}
               onChange={(value) => updateField('wordMs', value)}
               hint={ranges.pacing.wordMs.hint}
+              info={ranges.pacing.wordMs.info}
             />
             <RangeField
               label={ranges.pacing.classDurationMinutes.label}
@@ -795,6 +804,7 @@ export default function AiControl() {
               max={ranges.pacing.classDurationMinutes.max}
               step={ranges.pacing.classDurationMinutes.step}
               onChange={(value) => updateField('classDurationMinutes', value)}
+              info={ranges.pacing.classDurationMinutes.info}
             />
           </div>
         </Card>
@@ -812,6 +822,7 @@ export default function AiControl() {
               step={ranges.llm.onboardingTemperature.step}
               onChange={(value) => updateField('onboardingTemperature', value)}
               hint={ranges.llm.onboardingTemperature.hint}
+              info={ranges.llm.onboardingTemperature.info}
             />
             <RangeField
               label={ranges.llm.classroomTemperature.label}
@@ -821,6 +832,7 @@ export default function AiControl() {
               step={ranges.llm.classroomTemperature.step}
               onChange={(value) => updateField('classroomTemperature', value)}
               hint={ranges.llm.classroomTemperature.hint}
+              info={ranges.llm.classroomTemperature.info}
             />
           </div>
         </Card>
