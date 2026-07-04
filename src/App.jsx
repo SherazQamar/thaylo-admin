@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import AdminAuthGuard from './components/AdminAuthGuard'
 import RoleGuard from './components/RoleGuard'
 import AdminSignIn from './pages/AdminSignIn'
@@ -20,6 +20,7 @@ import CurriculumRefinement from './pages/CurriculumRefinement'
 import Insights from './pages/Insights'
 import AiControl from './pages/AiControl'
 import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
+import NotFound from './pages/NotFound'
 import {
   ADMIN_ONLY_ROLES,
   SUPER_ADMIN_ONLY_ROLES,
@@ -219,7 +220,7 @@ function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

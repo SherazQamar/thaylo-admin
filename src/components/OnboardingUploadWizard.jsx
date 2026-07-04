@@ -16,6 +16,7 @@ import {
   parseOnboardingDocument,
   publishParsedOnboarding,
 } from '../lib/onboarding-api'
+import InfoTooltip from './InfoTooltip'
 
 const STEPS = ['Upload', 'Review', 'Publish']
 
@@ -24,18 +25,21 @@ const AUDIENCE_OPTIONS = [
     value: 'STUDENT',
     label: 'Student only',
     description: 'Publish student / AI avatar questions from this document',
+    info: 'These questions will only appear on the student dashboard during child onboarding.',
     Icon: GraduationCap,
   },
   {
     value: 'PARENT',
     label: 'Parent only',
     description: 'Publish parent / caregiver questions from this document',
+    info: 'These questions will only appear on the parent dashboard during parent onboarding.',
     Icon: UserRound,
   },
   {
     value: 'BOTH',
     label: 'Both',
     description: 'Create separate student and parent walkthroughs from one upload',
+    info: 'Student questions appear on the student dashboard. Parent questions appear on the parent dashboard after the student section is completed.',
     Icon: Users,
   },
 ]
@@ -394,7 +398,10 @@ export default function OnboardingUploadWizard({
                         size={22}
                         className={active ? 'text-[#00CED1]' : 'text-white/50'}
                       />
-                      <p className="text-white font-semibold mt-3">{opt.label}</p>
+                      <div className="flex items-center gap-1.5 mt-3">
+                        <p className="text-white font-semibold">{opt.label}</p>
+                        <InfoTooltip content={opt.info} label={`About ${opt.label}`} align="left" />
+                      </div>
                       <p className="text-white/50 text-xs mt-1">{opt.description}</p>
                     </button>
                   )
