@@ -16,7 +16,6 @@ import {
   DEFAULT_ELEVENLABS_VOICE_NAME,
   ELEVENLABS_MODELS,
   FREE_TIER_FALLBACK_CATALOG,
-  VOICE_ENGINES,
   aiSettingsQueryKeys,
   fetchAiSettings,
   fetchElevenLabsVoices,
@@ -221,11 +220,12 @@ export default function AiControl() {
   const freeVoices = voiceCatalog?.freeVoices?.length
     ? voiceCatalog.freeVoices
     : FREE_TIER_FALLBACK_CATALOG.freeVoices
+  const paidVoices = voiceCatalog?.paidVoices ?? []
   const clientVoice = voiceCatalog?.clientVoice ?? FREE_TIER_FALLBACK_CATALOG.clientVoice
 
   const allSelectableVoices = useMemo(
-    () => [...freeVoices, clientVoice],
-    [freeVoices, clientVoice],
+    () => [...freeVoices, ...paidVoices, clientVoice],
+    [freeVoices, paidVoices, clientVoice],
   )
 
   const selectedVoice = useMemo(
@@ -233,8 +233,24 @@ export default function AiControl() {
     [allSelectableVoices, form?.elevenLabsVoiceId],
   )
 
-  const usingClientLibraryVoice = form?.elevenLabsVoiceId === form?.reservedClientVoiceId
-  const selectedVoiceUnavailable = selectedVoice && !selectedVoice.apiAvailable
+  // A voice is only flagged unavailable when it is not usable on the current
+  // ElevenLabs plan (or it isn't present in the account at all).
+  const selectedVoiceUnavailable = Boolean(form?.elevenLabsVoiceId)
+    ? !selectedVoice || selectedVoice.apiAvailable === false
+    : false
+
+  // The "free credit" option only exposes the first 6 premade voices.
+  const freeSixVoices = useMemo(() => freeVoices.slice(0, 6), [freeVoices])
+
+  // The Voice engine dropdown presents three modes. Under the hood only two
+  // backend engines exist ('browser' | 'elevenlabs'); the free/paid split is a
+  // UI convenience: any ElevenLabs voice that is not one of the six free
+  // premade voices is treated as the paid voice.
+  const voiceMode = useMemo(() => {
+    if (form?.engine === 'browser') return 'browser'
+    const isFree = freeSixVoices.some((voice) => voice.voiceId === form?.elevenLabsVoiceId)
+    return isFree ? 'elevenlabs-free' : 'elevenlabs-paid'
+  }, [form?.engine, form?.elevenLabsVoiceId, freeSixVoices])
 
   useEffect(() => {
     if (data) {
@@ -363,14 +379,42 @@ export default function AiControl() {
     setSaveFeedback(null)
   }
 
-  function activateClientVoice() {
-    selectVoice({
-      voiceId: form.reservedClientVoiceId,
-      name: form.reservedClientVoiceName,
+  function handleVoiceModeChange(mode) {
+    setStatusMessage(null)
+    setSaveFeedback(null)
+
+    if (mode === 'browser') {
+      updateField('engine', 'browser')
+      return
+    }
+
+    if (mode === 'elevenlabs-paid') {
+      setForm((prev) => ({
+        ...prev,
+        engine: 'elevenlabs',
+        elevenLabsVoiceId: prev.reservedClientVoiceId,
+        elevenLabsVoiceName: prev.reservedClientVoiceName,
+      }))
+      return
+    }
+
+    // elevenlabs-free: keep the current free voice, otherwise fall back to the
+    // recommended default (Bella).
+    setForm((prev) => {
+      const alreadyFree = freeSixVoices.some((voice) => voice.voiceId === prev.elevenLabsVoiceId)
+      if (alreadyFree) {
+        return { ...prev, engine: 'elevenlabs' }
+      }
+      const fallback =
+        freeSixVoices.find((voice) => voice.voiceId === DEFAULT_ELEVENLABS_VOICE_ID) ??
+        freeSixVoices[0]
+      return {
+        ...prev,
+        engine: 'elevenlabs',
+        elevenLabsVoiceId: fallback?.voiceId ?? prev.elevenLabsVoiceId,
+        elevenLabsVoiceName: fallback?.name ?? prev.elevenLabsVoiceName,
+      }
     })
-    setStatusMessage(
-      'Client voice selected. Test it after upgrading ElevenLabs — it will not work on a free API plan until then.',
-    )
   }
 
   function handleElevenLabsVoiceChange(voiceId) {
@@ -542,27 +586,25 @@ export default function AiControl() {
             <div>
               <Label>Voice engine</Label>
               <SelectInput
-                value={form.engine}
-                onChange={(event) => updateField('engine', event.target.value)}
+                value={voiceMode}
+                onChange={(event) => handleVoiceModeChange(event.target.value)}
               >
-                {VOICE_ENGINES.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                <option value="browser">Browser based</option>
+                <option value="elevenlabs-free">ElevenLabs — free credit voices</option>
+                <option value="elevenlabs-paid">ElevenLabs — paid voice</option>
               </SelectInput>
             </div>
 
             {form.engine === 'elevenlabs' ? (
               <>
-                {(usingClientLibraryVoice || selectedVoiceUnavailable) && (
+                {selectedVoiceUnavailable && (
                   <div className="rounded-xl border border-[#FFC542]/30 bg-[#FFC542]/10 px-4 py-3 text-sm text-[#FFC542]">
                     <p className="font-medium">
                       The active voice is not available on your current ElevenLabs API plan.
                     </p>
                     <p className="mt-1 text-[#FFC542]/90">
-                      Pick any free premade voice below for now. The client voice stays saved for
-                      when they upgrade.
+                      Add this voice to your ElevenLabs account, or pick a voice below. Free premade
+                      voices always work.
                     </p>
                     <button
                       type="button"
@@ -574,38 +616,76 @@ export default function AiControl() {
                   </div>
                 )}
 
-                <div>
-                  <Label>Free ElevenLabs voices (use until client upgrades)</Label>
-                  <p className="text-white/45 text-xs mb-3">
-                    These premade voices work on free API plans. Click one to set it as Calyx&apos;s
-                    active voice.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {freeVoices.map((voice) => (
-                      <VoiceChip
-                        key={voice.voiceId}
-                        voice={voice}
-                        active={form.elevenLabsVoiceId === voice.voiceId}
-                        onClick={() => selectVoice(voice)}
-                      />
-                    ))}
-                  </div>
-                  {voicesLoading && (
-                    <p className="text-white/40 text-xs mt-2">Loading voices from ElevenLabs…</p>
-                  )}
-                  {voicesError && (
-                    <p className="text-[#FFC542]/90 text-xs mt-2">
-                      Could not refresh from ElevenLabs. Showing built-in free voice catalog.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-white/10 bg-[#111023] p-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                {voiceMode === 'elevenlabs-free' && (
+                  <>
                     <div>
-                      <p className="text-white text-sm font-semibold">Client voice (saved for later)</p>
+                      <Label>Free ElevenLabs voices</Label>
+                      <p className="text-white/45 text-xs mb-3">
+                        Six premade voices that run on free ElevenLabs credits. Click one to set it
+                        as Calyx&apos;s active voice.
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {freeSixVoices.map((voice) => (
+                          <VoiceChip
+                            key={voice.voiceId}
+                            voice={voice}
+                            active={form.elevenLabsVoiceId === voice.voiceId}
+                            onClick={() => selectVoice(voice)}
+                          />
+                        ))}
+                      </div>
+                      {voicesLoading && (
+                        <p className="text-white/40 text-xs mt-2">Loading voices from ElevenLabs…</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div>
+                        <Label>Active voice (dropdown)</Label>
+                        <SelectInput
+                          value={form.elevenLabsVoiceId}
+                          onChange={(event) => handleElevenLabsVoiceChange(event.target.value)}
+                          disabled={voicesLoading}
+                        >
+                          {freeSixVoices.map((voice) => (
+                            <option key={voice.voiceId} value={voice.voiceId}>
+                              {voice.name}
+                            </option>
+                          ))}
+                        </SelectInput>
+                      </div>
+                      <div>
+                        <Label>Voice label</Label>
+                        <TextInput
+                          value={form.elevenLabsVoiceName}
+                          onChange={(event) => updateField('elevenLabsVoiceName', event.target.value)}
+                        />
+                        <p className="text-white/40 text-xs mt-2">
+                          Active voice ID: <span className="text-white/60">{form.elevenLabsVoiceId}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {voiceMode === 'elevenlabs-paid' && (
+                  <>
+                    <div className="rounded-xl border border-white/10 bg-[#111023] p-4">
+                      <p className="text-white text-sm font-semibold">Paid ElevenLabs voice</p>
                       <p className="text-white/50 text-xs mt-1">
-                        {form.reservedClientVoiceName} · {form.reservedClientVoiceId}
+                        {form.elevenLabsVoiceName || 'Unnamed voice'} · {form.elevenLabsVoiceId}
+                      </p>
+                      <p className="text-xs mt-1">
+                        {clientVoice?.apiAvailable ? (
+                          <span className="text-[#3BE8B0]">
+                            Available on your current ElevenLabs plan — ready to use.
+                          </span>
+                        ) : (
+                          <span className="text-white/45">
+                            Make sure this voice is in your ElevenLabs account and your API key can
+                            use it, then press “Test voice”.
+                          </span>
+                        )}
                       </p>
                       <a
                         href={CLIENT_VOICE_LIBRARY_URL}
@@ -613,52 +693,35 @@ export default function AiControl() {
                         rel="noreferrer"
                         className="text-[#00CED1] text-xs underline mt-1 inline-block"
                       >
-                        Open client voice in ElevenLabs
+                        Open this voice in ElevenLabs
                       </a>
                     </div>
-                    <button
-                      type="button"
-                      onClick={activateClientVoice}
-                      className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-white/70 hover:border-[#00CED1]/40 hover:text-[#00CED1]"
-                    >
-                      Set as active (after upgrade)
-                    </button>
-                  </div>
-                </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <Label>Active voice (dropdown)</Label>
-                    <SelectInput
-                      value={form.elevenLabsVoiceId}
-                      onChange={(event) => handleElevenLabsVoiceChange(event.target.value)}
-                      disabled={voicesLoading}
-                    >
-                      <optgroup label="Free API voices">
-                        {freeVoices.map((voice) => (
-                          <option key={voice.voiceId} value={voice.voiceId}>
-                            {voice.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Client voice">
-                        <option value={form.reservedClientVoiceId}>
-                          {form.reservedClientVoiceName} — after upgrade
-                        </option>
-                      </optgroup>
-                    </SelectInput>
-                  </div>
-                  <div>
-                    <Label>Voice label</Label>
-                    <TextInput
-                      value={form.elevenLabsVoiceName}
-                      onChange={(event) => updateField('elevenLabsVoiceName', event.target.value)}
-                    />
-                    <p className="text-white/40 text-xs mt-2">
-                      Active voice ID: <span className="text-white/60">{form.elevenLabsVoiceId}</span>
-                    </p>
-                  </div>
-                </div>
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div>
+                        <Label
+                          info="Paste the exact voice ID of the paid voice from your ElevenLabs account."
+                        >
+                          Paid voice ID
+                        </Label>
+                        <TextInput
+                          value={form.elevenLabsVoiceId}
+                          placeholder="e.g. gJx1vCzNCD1EQHT212Ls"
+                          onChange={(event) =>
+                            updateField('elevenLabsVoiceId', event.target.value.trim())
+                          }
+                        />
+                      </div>
+                      <div>
+                        <Label>Voice label</Label>
+                        <TextInput
+                          value={form.elevenLabsVoiceName}
+                          onChange={(event) => updateField('elevenLabsVoiceName', event.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <Label>ElevenLabs model</Label>
