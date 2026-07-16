@@ -20,6 +20,7 @@ import CurriculumRefinement from './pages/CurriculumRefinement'
 import Insights from './pages/Insights'
 import AiControl from './pages/AiControl'
 import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
+import SecurityLogs from './pages/SecurityLogs'
 import NotFound from './pages/NotFound'
 import {
   ADMIN_ONLY_ROLES,
@@ -199,7 +200,7 @@ function App() {
           path="/super-admin/security"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="Security & Logs" />
+              <SecurityLogs />
             </ProtectedRoute>
           }
         />

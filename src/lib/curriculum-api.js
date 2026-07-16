@@ -308,6 +308,58 @@ export async function updateCurriculumStatus(id, payload) {
   return data.data
 }
 
+/**
+ * Pre-generate shared AI lesson runtime plans (before publish).
+ * @param {number} id
+ */
+export async function generateCurriculumRuntimes(id) {
+  if (USE_MOCK) {
+    await delay(2500)
+    const current = loadMockCurricula().find((row) => row.id === Number(id))
+    if (!current) throw new Error('Curriculum not found')
+
+    const scriptJson = structuredClone(current.scriptJson)
+    for (const lesson of scriptJson?.lessons ?? []) {
+      lesson.runtimePlan = {
+        version: 1,
+        totalMinutes: 15,
+        teachUntilMinute: 12,
+        segments: [
+          {
+            id: `${lesson.key}-teach`,
+            phase: 'teach',
+            title: lesson.title ?? 'Lesson',
+            narrationScript: 'Mock narration for preview.',
+            lines: ['Mock blackboard line'],
+          },
+        ],
+      }
+    }
+
+    return {
+      curriculum: updateMockCurriculum(id, {
+        version: current.version + 1,
+        scriptJson,
+      }),
+      results: (scriptJson?.lessons ?? []).map((lesson) => ({
+        key: lesson.key,
+        runtimePlan: lesson.runtimePlan,
+      })),
+    }
+  }
+
+  const { data } = await api.post(`/admin/curriculum/${id}/generate-runtimes`)
+  return data.data
+}
+
+export function countLessonsWithRuntime(scriptJson) {
+  const lessons = scriptJson?.lessons ?? []
+  return lessons.filter((lesson) => {
+    const plan = lesson?.runtimePlan
+    return plan?.version === 1 && Array.isArray(plan.segments) && plan.segments.length > 0
+  }).length
+}
+
 export async function deleteCurriculum(id) {
   if (USE_MOCK) {
     await delay(300)

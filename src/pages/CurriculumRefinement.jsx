@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Info, Sparkles } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Info, Loader2, Sparkles } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ConfirmModal from '../components/ConfirmModal'
 import CurriculumLessonPreview from '../components/CurriculumLessonPreview'
 import CurriculumClassPreviewModal from '../components/CurriculumClassPreviewModal'
+import CurriculumAiPlanPreviewModal from '../components/CurriculumAiPlanPreviewModal'
 import CurriculumRefinementChat from '../components/CurriculumRefinementChat'
 import { getApiErrorMessage } from '../lib/auth-api'
 import {
   CURRICULUM_BETA_INFO_MESSAGE,
   CURRICULUM_STATUS_LABELS,
+  countLessonsWithRuntime,
   curriculumQueryKeys,
   fetchCurriculum,
+  generateCurriculumRuntimes,
   isCurriculumMockMode,
   refineCurriculumWithAi,
   updateCurriculumStatus,
@@ -50,12 +53,20 @@ export default function CurriculumRefinement() {
   const queryClient = useQueryClient()
   const curriculumId = Number(id)
   const [classPreviewOpen, setClassPreviewOpen] = useState(false)
+  const [aiPlanPreviewOpen, setAiPlanPreviewOpen] = useState(false)
   const [previewLessonIndex, setPreviewLessonIndex] = useState(0)
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
+  const [publishLoadingMessage, setPublishLoadingMessage] = useState('')
+  const [publishError, setPublishError] = useState('')
 
   const openClassPreview = (lessonIndex = 0) => {
     setPreviewLessonIndex(lessonIndex)
     setClassPreviewOpen(true)
+  }
+
+  const openAiPlanPreview = (lessonIndex = 0) => {
+    setPreviewLessonIndex(lessonIndex)
+    setAiPlanPreviewOpen(true)
   }
 
   const breadcrumbs = useMemo(
@@ -74,8 +85,8 @@ export default function CurriculumRefinement() {
   })
 
   useEffect(() => {
-    if (location.state?.previewClass && data?.scriptJson) {
-      openClassPreview(0)
+    if (location.state?.previewAiPlan && data?.scriptJson) {
+      openAiPlanPreview(0)
       navigate(location.pathname, { replace: true, state: {} })
     }
   }, [location.state, data?.scriptJson, navigate, location.pathname])
@@ -98,6 +109,53 @@ export default function CurriculumRefinement() {
       }
     },
   })
+
+  const generateRuntimesMutation = useMutation({
+    mutationFn: () => generateCurriculumRuntimes(curriculumId),
+    onSuccess: async (result) => {
+      if (result?.curriculum) {
+        queryClient.setQueryData(curriculumQueryKeys.detail(curriculumId), result.curriculum)
+      }
+      await queryClient.invalidateQueries({ queryKey: curriculumQueryKeys.detail(curriculumId) })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum'] })
+    },
+  })
+
+  const runtimeReadyCount = useMemo(
+    () => countLessonsWithRuntime(data?.scriptJson),
+    [data?.scriptJson],
+  )
+  const lessonCount = data?.scriptJson?.lessons?.length ?? 0
+  const allRuntimesReady = lessonCount > 0 && runtimeReadyCount >= lessonCount
+  const isGeneratingPlans = generateRuntimesMutation.isPending
+  const isPublishing = statusMutation.isPending
+  const isAiBusy = isGeneratingPlans || isPublishing
+
+  async function handlePublishConfirmed() {
+    setPublishConfirmOpen(false)
+    setPublishError('')
+    try {
+      const totalLessons = data?.scriptJson?.lessons?.length ?? 0
+      let readyCount = countLessonsWithRuntime(data?.scriptJson)
+
+      if (totalLessons > 0 && readyCount < totalLessons) {
+        setPublishLoadingMessage('Generating AI lesson plans, then publishing…')
+        const result = await generateRuntimesMutation.mutateAsync()
+        const scriptJson = result?.curriculum?.scriptJson ?? data?.scriptJson
+        readyCount = countLessonsWithRuntime(scriptJson)
+        if (readyCount < totalLessons) {
+          throw new Error('AI lesson plans could not be generated for all lessons.')
+        }
+      }
+
+      setPublishLoadingMessage('Publishing curriculum for students…')
+      await statusMutation.mutateAsync('PUBLISHED')
+    } catch (error) {
+      setPublishError(getApiErrorMessage(error))
+    } finally {
+      setPublishLoadingMessage('')
+    }
+  }
 
   const isPublished = data?.status === 'PUBLISHED'
   const isArchived = data?.status === 'ARCHIVED'
@@ -124,8 +182,9 @@ export default function CurriculumRefinement() {
                 )}
               </div>
               <p className="text-white/50 text-sm mt-1">
-                Review extracted content on the left. Use Preview class on each lesson to see the
-                15-minute experience. Improve with AI only when you want edits.
+                Review extracted content, then publish when ready.{' '}
+                <strong className="text-white/70">Publish</strong> generates AI lesson plans and
+                makes the curriculum available to students.
               </p>
             </div>
           </div>
@@ -142,6 +201,24 @@ export default function CurriculumRefinement() {
             <div className="rounded-2xl border border-[#FFC542]/30 bg-[#FFC542]/10 px-4 py-3 text-[#FFC542] text-sm flex items-center gap-2">
               <Sparkles size={16} className="shrink-0" />
               Mock mode — connect backend for real document extraction.
+            </div>
+          )}
+
+          {publishError && (
+            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm space-y-2">
+              <p>{publishError}</p>
+              <Link
+                to="/super-admin/security"
+                className="inline-block text-[#00CED1] underline text-xs"
+              >
+                View details in Security &amp; Logs
+              </Link>
+            </div>
+          )}
+
+          {generateRuntimesMutation.isError && !publishError && (
+            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
+              {getApiErrorMessage(generateRuntimesMutation.error)}
             </div>
           )}
 
@@ -183,9 +260,13 @@ export default function CurriculumRefinement() {
               <CurriculumLessonPreview
                 scriptJson={data.scriptJson}
                 onPreviewClass={openClassPreview}
+                onPreviewAiPlan={openAiPlanPreview}
                 status={data.status}
                 isArchived={isArchived}
-                statusPending={statusMutation.isPending}
+                statusPending={isPublishing}
+                workflowPending={isAiBusy}
+                runtimeReadyCount={runtimeReadyCount}
+                lessonCount={lessonCount}
                 onSubmitForReview={() => statusMutation.mutate('IN_REVIEW')}
                 onPublish={() => setPublishConfirmOpen(true)}
               />
@@ -227,23 +308,60 @@ export default function CurriculumRefinement() {
         />
       )}
 
+      {data?.scriptJson && (
+        <CurriculumAiPlanPreviewModal
+          open={aiPlanPreviewOpen}
+          onClose={() => setAiPlanPreviewOpen(false)}
+          scriptJson={data.scriptJson}
+          title={data.title}
+          initialLessonIndex={previewLessonIndex}
+        />
+      )}
+
       <ConfirmModal
         open={publishConfirmOpen}
         onClose={() => {
-          if (!statusMutation.isPending) setPublishConfirmOpen(false)
+          if (!isAiBusy) setPublishConfirmOpen(false)
         }}
-        onConfirm={() => statusMutation.mutate('PUBLISHED')}
+        onConfirm={() => void handlePublishConfirmed()}
         title="Publish curriculum?"
-        message="Students can be assigned to this curriculum after publishing. Further edits will be locked."
+        message={
+          allRuntimesReady
+            ? 'Students can be assigned to this curriculum after publishing. Further edits will be locked.'
+            : 'AI lesson plans will be generated automatically for all lessons, then this curriculum will be published. Further edits will be locked.'
+        }
         confirmLabel="Publish"
         variant="primary"
-        isLoading={statusMutation.isPending}
+        isLoading={isAiBusy}
         icon={
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#00CED1]/15">
             <CheckCircle2 size={28} className="text-[#00CED1]" />
           </div>
         }
       />
+
+      {isAiBusy && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#111023]/80 backdrop-blur-sm px-4">
+          <div
+            className="max-w-md w-full rounded-2xl border border-[#00CED1]/30 bg-[#313044] px-6 py-8 text-center"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="w-10 h-10 text-[#00CED1] animate-spin mx-auto mb-4" />
+            <p className="text-white font-semibold text-lg">
+              {generateRuntimesMutation.isPending
+                ? 'Generating AI lesson plans…'
+                : 'Publishing curriculum…'}
+            </p>
+            <p className="text-white/55 text-sm mt-2 leading-relaxed">
+              {generateRuntimesMutation.isPending
+                ? 'Creating shared 15-minute teaching scripts for each lesson. This usually takes 30–90 seconds.'
+                : publishLoadingMessage ||
+                  'Please keep this page open while we finish.'}
+            </p>
+          </div>
+        </div>
+      )}
     </SuperAdminLayout>
   )
 }

@@ -82,6 +82,8 @@ const EMPTY_FORM = {
   estimatedMinutes: '',
   tone: '',
   content: '',
+  showFrom: '',
+  showUntil: '',
 }
 
 /**
@@ -126,6 +128,8 @@ export default function OnboardingWalkthroughModal({
           initial.estimatedMinutes != null ? String(initial.estimatedMinutes) : '',
         tone: initial.tone ?? '',
         content: initial.content ?? '',
+        showFrom: initial.showFrom ? String(initial.showFrom).slice(0, 10) : '',
+        showUntil: initial.showUntil ? String(initial.showUntil).slice(0, 10) : '',
       })
       return
     }
@@ -147,6 +151,10 @@ export default function OnboardingWalkthroughModal({
       ? Number(form.estimatedMinutes)
       : undefined
 
+    if (form.status === 'PUBLISHED' && (!form.showFrom || !form.showUntil)) {
+      return
+    }
+
     await onSubmit?.({
       title: form.title.trim(),
       description: form.description.trim() || undefined,
@@ -160,6 +168,8 @@ export default function OnboardingWalkthroughModal({
         estimatedMinutes && Number.isFinite(estimatedMinutes)
           ? estimatedMinutes
           : undefined,
+      showFrom: form.showFrom || undefined,
+      showUntil: form.showUntil || undefined,
     })
   }
 
@@ -251,6 +261,33 @@ export default function OnboardingWalkthroughModal({
                 value={form.status}
                 onChange={(e) => updateField('status', e.target.value)}
                 options={STATUS_OPTIONS}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field
+              label="Show from"
+              hint="First day parent/child will see this assessment (required when published)."
+            >
+              <TextInput
+                type="date"
+                value={form.showFrom}
+                onChange={(e) => updateField('showFrom', e.target.value)}
+                required={form.status === 'PUBLISHED'}
+              />
+            </Field>
+
+            <Field
+              label="Show until"
+              hint="Last day the assessment is shown. After this, no one sees it until you set new dates."
+            >
+              <TextInput
+                type="date"
+                value={form.showUntil}
+                onChange={(e) => updateField('showUntil', e.target.value)}
+                min={form.showFrom || undefined}
+                required={form.status === 'PUBLISHED'}
               />
             </Field>
           </div>
