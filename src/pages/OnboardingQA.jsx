@@ -91,6 +91,13 @@ function AudienceBadges({ item }) {
   )
 }
 
+function formatShowWindow(item) {
+  if (!item.showFrom || !item.showUntil) return '—'
+  const from = String(item.showFrom).slice(0, 10)
+  const until = String(item.showUntil).slice(0, 10)
+  return `${from} → ${until}`
+}
+
 function formatEstimatedMinutes(item) {
   if (item.parentEstimatedMinutes != null && item.estimatedMinutes != null) {
     return `${item.estimatedMinutes} / ${item.parentEstimatedMinutes}`
@@ -363,7 +370,7 @@ export default function OnboardingQA() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[1000px]">
               <thead>
                 <tr className="border-b border-white/5">
                   <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
@@ -371,6 +378,9 @@ export default function OnboardingQA() {
                   </th>
                   <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
                     Audience
+                  </th>
+                  <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
+                    Show window
                   </th>
                   <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
                     Order
@@ -389,7 +399,7 @@ export default function OnboardingQA() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-white/40 text-sm">
+                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
                       Loading walkthroughs…
                     </td>
                   </tr>
@@ -397,7 +407,7 @@ export default function OnboardingQA() {
 
                 {!isLoading && items.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-white/40 text-sm">
+                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
                       No walkthroughs match these filters. Try another audience, status, or search term.
                     </td>
                   </tr>
@@ -412,6 +422,9 @@ export default function OnboardingQA() {
                       </td>
                       <td className="py-4 px-4">
                         <AudienceBadges item={item} />
+                      </td>
+                      <td className="py-4 px-4 text-white/70 text-sm whitespace-nowrap">
+                        {formatShowWindow(item)}
                       </td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.sortOrder}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">

@@ -137,6 +137,8 @@ export async function parseOnboardingDocument(file) {
  *   timing: OnboardingTiming;
  *   sortOrder?: number;
  *   status?: OnboardingWalkthroughStatus;
+ *   showFrom?: string;
+ *   showUntil?: string;
  * }} payload
  */
 export async function publishParsedOnboarding(payload) {

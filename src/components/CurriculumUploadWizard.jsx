@@ -5,24 +5,27 @@ import {
   FileText,
   ChevronRight,
   ChevronLeft,
-  BookOpen,
 } from 'lucide-react'
 import {
   CURRICULUM_BETA_INFO_MESSAGE,
   CURRICULUM_BETA_LESSON_LIMIT,
-  CURRICULUM_STATUS_LABELS,
   createCurriculumFromParsed,
   parseCurriculumDocument,
 } from '../lib/curriculum-api'
 
-const STEPS = ['Upload', 'Review', 'Create draft']
+const STEPS = ['Upload', 'Review']
 
-function ProcessingProgressBar({ active, label, hint }) {
+function ProcessingProgressBar({ active, label, hint, complete = false }) {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     if (!active) {
       setProgress(0)
+      return undefined
+    }
+
+    if (complete) {
+      setProgress(100)
       return undefined
     }
 
@@ -36,7 +39,7 @@ function ProcessingProgressBar({ active, label, hint }) {
     }, 700)
 
     return () => window.clearInterval(interval)
-  }, [active])
+  }, [active, complete])
 
   if (!active) return null
 
@@ -123,6 +126,8 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
   const [parseResult, setParseResult] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingPhase, setLoadingPhase] = useState(null)
+  const [loadingComplete, setLoadingComplete] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -132,6 +137,8 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
       setParseResult(null)
       setError('')
       setLoading(false)
+      setLoadingPhase(null)
+      setLoadingComplete(false)
     }
   }, [open])
 
@@ -141,6 +148,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
     if (!file) return
     setError('')
     setLoading(true)
+    setLoadingPhase('parse')
     try {
       const result = await parseCurriculumDocument(file)
       setParseResult(result)
@@ -149,27 +157,46 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
       setError(err.message || 'Failed to parse document')
     } finally {
       setLoading(false)
+      setLoadingPhase(null)
     }
   }
 
-  async function handleCreate() {
+  async function handleCreateDraft() {
     if (!parseResult) return
     setError('')
     setLoading(true)
+    setLoadingComplete(false)
+    setLoadingPhase('create')
     try {
       const created = await createCurriculumFromParsed({
         parsed: parseResult.parsed,
         rawText: parseResult.rawText,
         sourceDocUrl: parseResult.sourceDocUrl,
       })
+
+      setLoadingComplete(true)
+      await new Promise((resolve) => window.setTimeout(resolve, 300))
+
       onCreated?.(created)
       onClose()
     } catch (err) {
       setError(err.message || 'Failed to create curriculum draft')
+      setLoadingPhase(null)
+      setLoadingComplete(false)
     } finally {
       setLoading(false)
     }
   }
+
+  const progressLabel =
+    loadingPhase === 'create'
+      ? 'Creating curriculum draft…'
+      : 'Extracting lessons from document…'
+
+  const progressHint =
+    loadingPhase === 'create'
+      ? 'Saving extracted lessons. AI lesson plans are generated when you publish from Class setup.'
+      : 'Reading your file and structuring Lessons 1–5. This usually takes 30–60 seconds.'
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -251,7 +278,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
             </div>
           )}
 
-          {step === 1 && parseResult && (
+          {step === 1 && parseResult && !loading && (
             <div className="space-y-4">
               <div className="rounded-2xl bg-[#313044] p-4 flex items-start gap-3">
                 <FileText size={20} className="text-[#00CED1] shrink-0 mt-0.5" />
@@ -275,6 +302,12 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-white/10 bg-[#313044]/80 px-4 py-3 text-white/55 text-sm">
+                <strong className="text-white/75">Continue</strong> saves your draft and opens Class
+                setup. Click <strong className="text-white/75">Publish</strong> there to generate AI
+                lesson plans and make the curriculum live for students.
+              </div>
+
               <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                 {parseResult.parsed.lessons.map((lesson) => (
                   <LessonPreviewCard key={lesson.key} lesson={lesson} />
@@ -283,44 +316,17 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
             </div>
           )}
 
-          {step === 2 && parseResult && (
-            <div className="rounded-2xl bg-[#313044] p-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <BookOpen size={22} className="text-[#00CED1]" />
-                <div>
-                  <p className="text-white font-semibold">Ready to create draft</p>
-                  <p className="text-white/50 text-sm">
-                    Status will be <strong className="text-white/70">Draft</strong>. You will
-                    preview the 15-minute class experience, then publish when ready.
-                  </p>
-                </div>
-              </div>
-              <p className="text-white/40 text-xs">
-                {CURRICULUM_STATUS_LABELS.DRAFT} → refine →{' '}
-                {CURRICULUM_STATUS_LABELS.IN_REVIEW} → {CURRICULUM_STATUS_LABELS.PUBLISHED}
-              </p>
-            </div>
+          {loading && (step === 0 || step === 1) && (
+            <ProcessingProgressBar
+              active
+              complete={loadingComplete}
+              label={progressLabel}
+              hint={progressHint}
+            />
           )}
         </div>
 
-        {(loading && (step === 0 || step === 2)) && (
-          <div className="shrink-0 px-6 pb-3">
-            <ProcessingProgressBar
-              active
-              label={
-                step === 0
-                  ? 'Extracting lessons from document…'
-                  : 'Creating curriculum draft…'
-              }
-              hint={
-                step === 0
-                  ? 'Reading your file and structuring Lessons 1–5. This usually takes 30–60 seconds.'
-                  : 'Saving extracted lessons to your curriculum library.'
-              }
-            />
-          </div>
-        )}
-
+        {!loading && (
         <div className="px-6 py-4 border-t border-white/5 flex justify-between gap-3">
           <button
             type="button"
@@ -347,26 +353,16 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
           {step === 1 && (
             <button
               type="button"
-              onClick={() => setStep(2)}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] px-5 py-2.5 text-sm font-semibold hover:bg-[#00B8BB]"
+              onClick={handleCreateDraft}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] px-5 py-2.5 text-sm font-semibold hover:bg-[#00B8BB] disabled:opacity-50"
             >
               Continue
               <ChevronRight size={16} />
             </button>
           )}
-
-          {step === 2 && (
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] px-5 py-2.5 text-sm font-semibold hover:bg-[#00B8BB] disabled:opacity-50"
-            >
-              {loading ? 'Creating…' : 'Create draft & open studio'}
-              <ChevronRight size={16} />
-            </button>
-          )}
         </div>
+        )}
       </div>
     </div>
   )

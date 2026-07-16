@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Play, Send } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, Play, Send, Sparkles } from 'lucide-react'
+import { isLessonRuntimePlan } from '../lib/lesson-runtime-plan'
 import {
   CURRICULUM_BETA_LESSON_LIMIT,
   CURRICULUM_QUESTION_TYPE_LABELS,
@@ -45,10 +46,11 @@ function SectionBlock({ section }) {
   )
 }
 
-function LessonCard({ lesson, defaultOpen, onPreviewClass }) {
+function LessonCard({ lesson, defaultOpen, onPreviewClass, onPreviewAiPlan }) {
   const [open, setOpen] = useState(defaultOpen)
   const sections = lesson.sections ?? []
   const assessments = lesson.assessments ?? lesson.questions ?? []
+  const hasRuntime = isLessonRuntimePlan(lesson.runtimePlan)
 
   return (
     <div className="rounded-2xl border border-white/5 overflow-hidden">
@@ -67,6 +69,7 @@ function LessonCard({ lesson, defaultOpen, onPreviewClass }) {
               {lesson.elementTitle && ` · ${lesson.elementTitle}`}
               {sections.length > 0 && ` · ${sections.length} section(s)`}
               {assessments.length > 0 && ` · ${assessments.length} assessment(s)`}
+              {hasRuntime && ' · AI plan ready'}
             </p>
           </div>
           {open ? (
@@ -80,11 +83,23 @@ function LessonCard({ lesson, defaultOpen, onPreviewClass }) {
           <button
             type="button"
             onClick={() => onPreviewClass(lesson.order - 1)}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#00CED1]/50 text-[#00CED1] px-3 py-2 text-xs font-semibold hover:bg-[#00CED1]/10"
-            title={`Preview Lesson ${lesson.order} class`}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/15 text-white/70 px-3 py-2 text-xs font-semibold hover:bg-white/5"
+            title={`Preview extracted document layout for Lesson ${lesson.order}`}
           >
             <Play size={12} />
-            Preview class
+            Doc preview
+          </button>
+        )}
+
+        {onPreviewAiPlan && hasRuntime && (
+          <button
+            type="button"
+            onClick={() => onPreviewAiPlan(lesson.order - 1)}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#00CED1]/50 text-[#00CED1] px-3 py-2 text-xs font-semibold hover:bg-[#00CED1]/10"
+            title={`Preview AI lesson plan for Lesson ${lesson.order}`}
+          >
+            <Sparkles size={12} />
+            AI plan
           </button>
         )}
       </div>
@@ -121,9 +136,13 @@ function LessonCard({ lesson, defaultOpen, onPreviewClass }) {
  * @param {{
  *   scriptJson: import('../lib/curriculum-mock-data').CurriculumScriptJson;
  *   onPreviewClass?: (lessonIndex: number) => void;
+ *   onPreviewAiPlan?: (lessonIndex: number) => void;
  *   status?: string;
  *   isArchived?: boolean;
  *   statusPending?: boolean;
+ *   workflowPending?: boolean;
+ *   runtimeReadyCount?: number;
+ *   lessonCount?: number;
  *   onSubmitForReview?: () => void;
  *   onPublish?: () => void;
  * }} props
@@ -131,15 +150,21 @@ function LessonCard({ lesson, defaultOpen, onPreviewClass }) {
 export default function CurriculumLessonPreview({
   scriptJson,
   onPreviewClass,
+  onPreviewAiPlan,
   status,
   isArchived,
   statusPending,
+  workflowPending = false,
+  runtimeReadyCount = 0,
+  lessonCount = 0,
   onSubmitForReview,
   onPublish,
 }) {
   const [tab, setTab] = useState('lessons')
   const meta = scriptJson?.metadata
+  const canPublish = status === 'DRAFT' || status === 'IN_REVIEW'
   const showWorkflow = !isArchived && (onSubmitForReview || onPublish)
+  const allRuntimesReady = lessonCount > 0 && runtimeReadyCount >= lessonCount
 
   return (
     <div className="space-y-3">
@@ -156,15 +181,40 @@ export default function CurriculumLessonPreview({
           )}
           <p className="text-white/40 text-xs mt-2">
             Extracted from your uploaded document — content shown as-is for class setup.
+            {lessonCount > 0 && (
+              <>
+                {' '}
+                AI plans: {runtimeReadyCount}/{lessonCount} lesson
+                {lessonCount === 1 ? '' : 's'} ready.
+              </>
+            )}
           </p>
+          {lessonCount > 0 && !allRuntimesReady && (
+            <p className="text-[#FFC542]/90 text-xs mt-1">
+              AI lesson plans will be created automatically when you publish ({runtimeReadyCount}/
+              {lessonCount} ready so far).
+            </p>
+          )}
         </div>
 
         {showWorkflow && (
-          <div className="flex flex-wrap gap-2 shrink-0 lg:pt-0.5">
-            {status === 'DRAFT' && onSubmitForReview && (
+          <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0 lg:pt-0.5">
+            {allRuntimesReady && onPreviewAiPlan && (
               <button
                 type="button"
-                disabled={statusPending}
+                disabled={workflowPending}
+                onClick={() => onPreviewAiPlan(0)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 text-white/80 px-4 py-2 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
+              >
+                <Sparkles size={14} className="text-[#00CED1]" />
+                Preview all AI plans
+              </button>
+            )}
+            <div className="flex flex-wrap gap-2 justify-end">
+            {status === 'DRAFT' && onSubmitForReview && allRuntimesReady && (
+              <button
+                type="button"
+                disabled={workflowPending}
                 onClick={onSubmitForReview}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#FFC542]/50 text-[#FFC542] px-4 py-2 text-sm font-semibold hover:bg-[#FFC542]/10 disabled:opacity-50"
               >
@@ -172,17 +222,19 @@ export default function CurriculumLessonPreview({
                 Submit for review
               </button>
             )}
-            {(status === 'DRAFT' || status === 'IN_REVIEW') && onPublish && (
+            {canPublish && onPublish && (
               <button
                 type="button"
-                disabled={statusPending}
+                disabled={workflowPending}
                 onClick={onPublish}
+                title="Publish curriculum for students"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] px-4 py-2 text-sm font-semibold hover:bg-[#00B8BB] disabled:opacity-50"
               >
                 <CheckCircle2 size={14} />
                 Publish
               </button>
             )}
+            </div>
           </div>
         )}
       </div>
@@ -217,6 +269,7 @@ export default function CurriculumLessonPreview({
                 lesson={lesson}
                 defaultOpen={index === 0}
                 onPreviewClass={onPreviewClass}
+                onPreviewAiPlan={onPreviewAiPlan}
               />
             ))
           ) : (
