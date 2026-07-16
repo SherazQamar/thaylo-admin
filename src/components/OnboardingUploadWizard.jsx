@@ -141,6 +141,8 @@ export default function OnboardingUploadWizard({
   const [timing, setTiming] = useState(defaultTiming)
   const [status, setStatus] = useState('DRAFT')
   const [sortOrder, setSortOrder] = useState('0')
+  const [showFrom, setShowFrom] = useState('')
+  const [showUntil, setShowUntil] = useState('')
 
   useEffect(() => {
     if (!open) {
@@ -152,6 +154,8 @@ export default function OnboardingUploadWizard({
       setTiming(defaultTiming)
       setStatus('DRAFT')
       setSortOrder('0')
+      setShowFrom('')
+      setShowUntil('')
     }
   }, [open, defaultTiming])
 
@@ -177,6 +181,10 @@ export default function OnboardingUploadWizard({
 
   async function handlePublish() {
     if (!parseResult) return
+    if (status === 'PUBLISHED' && (!showFrom || !showUntil)) {
+      setError('Please choose a show from and show until date before publishing.')
+      return
+    }
     setError('')
     setIsPublishing(true)
 
@@ -189,6 +197,8 @@ export default function OnboardingUploadWizard({
         timing,
         status,
         sortOrder: Number(sortOrder) || 0,
+        showFrom: showFrom || undefined,
+        showUntil: showUntil || undefined,
       })
       onPublished?.()
       onClose()
@@ -407,6 +417,37 @@ export default function OnboardingUploadWizard({
                   )
                 })}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-white text-sm font-medium">Show from</span>
+                <p className="text-white/40 text-xs mt-0.5 mb-1.5">
+                  First day parent/child will see this assessment
+                </p>
+                <input
+                  type="date"
+                  value={showFrom}
+                  onChange={(e) => setShowFrom(e.target.value)}
+                  required={status === 'PUBLISHED'}
+                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-white text-sm font-medium">Show until</span>
+                <p className="text-white/40 text-xs mt-0.5 mb-1.5">
+                  Last day shown — after this, hidden until you set new dates
+                </p>
+                <input
+                  type="date"
+                  value={showUntil}
+                  min={showFrom || undefined}
+                  onChange={(e) => setShowUntil(e.target.value)}
+                  required={status === 'PUBLISHED'}
+                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
+                />
+              </label>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -82,9 +82,9 @@ function SelectInput({ children, ...rest }) {
   )
 }
 
-function RangeField({ label, value, min, max, step, onChange, hint, info }) {
+function RangeField({ label, value, min, max, step, onChange, hint, info, disabled = false }) {
   return (
-    <div>
+    <div className={disabled ? 'opacity-70' : undefined}>
       <div className="flex items-center justify-between mb-2">
         <Label info={info}>{label}</Label>
         <span className="text-[#00CED1] text-sm font-semibold">{value}</span>
@@ -95,12 +95,14 @@ function RangeField({ label, value, min, max, step, onChange, hint, info }) {
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full accent-[#00CED1]"
+        className="w-full accent-[#00CED1] disabled:cursor-not-allowed"
       />
       <p className="text-white/40 text-xs mt-1">
-        Allowed: {min} – {max}
-        {hint ? ` · ${hint}` : ''}
+        {disabled
+          ? 'Fixed at 15 minutes for now — class timing will use this in a future update.'
+          : `Allowed: ${min} – ${max}${hint ? ` · ${hint}` : ''}`}
       </p>
     </div>
   )
@@ -139,8 +141,12 @@ function buildFormState(settings) {
       : clampValue(settings?.voice?.rate ?? browser.rate.default, browser.rate.min, browser.rate.max)
 
   return {
-    personaName: settings?.persona?.name ?? 'Calyx',
-    defaultTone: settings?.persona?.defaultTone ?? '',
+    instructorName: settings?.instructor?.name ?? 'AI Instructor',
+    instructorTagline: settings?.instructor?.tagline ?? 'your learning guide',
+    instructorTone: settings?.instructor?.defaultTone ?? '',
+    bloomBuddyName: settings?.bloomBuddy?.name ?? settings?.persona?.name ?? 'Calyx',
+    bloomBuddyTagline: settings?.bloomBuddy?.tagline ?? 'your Bloom Buddy',
+    bloomBuddyTone: settings?.bloomBuddy?.defaultTone ?? settings?.persona?.defaultTone ?? '',
     engine,
     elevenLabsVoiceId: settings?.voice?.elevenLabsVoiceId ?? DEFAULT_ELEVENLABS_VOICE_ID,
     elevenLabsVoiceName: settings?.voice?.elevenLabsVoiceName ?? DEFAULT_ELEVENLABS_VOICE_NAME,
@@ -180,6 +186,11 @@ function buildFormState(settings) {
       llm.classroomTemperature.min,
       llm.classroomTemperature.max,
     ),
+    bloomBuddyTemperature: clampValue(
+      settings?.llm?.bloomBuddyTemperature ?? llm.bloomBuddyTemperature?.default ?? 0.6,
+      llm.bloomBuddyTemperature?.min ?? 0,
+      llm.bloomBuddyTemperature?.max ?? 2,
+    ),
   }
 }
 
@@ -194,7 +205,7 @@ export default function AiControl() {
   const [savedFormSnapshot, setSavedFormSnapshot] = useState(null)
   const [browserVoices, setBrowserVoices] = useState([])
   const [testText, setTestText] = useState(
-    'Hello! I am Calyx. I am excited to learn with you today.',
+    'Hello! I am AI Instructor. I am excited to learn with you today.',
   )
   const [statusMessage, setStatusMessage] = useState(null)
   const [saveFeedback, setSaveFeedback] = useState(null)
@@ -303,7 +314,7 @@ export default function AiControl() {
       setSavedFormSnapshot(serializeFormSnapshot(nextForm))
       setSaveFeedback({
         type: 'success',
-        message: 'Settings saved successfully. Calyx will use these values in live classes.',
+        message: 'Settings saved successfully. AI Instructor and Bloom Buddy will use these values.',
       })
     },
     onError: (err) => {
@@ -317,9 +328,15 @@ export default function AiControl() {
   const payload = useMemo(() => {
     if (!form) return null
     return {
-      persona: {
-        name: form.personaName.trim(),
-        defaultTone: form.defaultTone.trim(),
+      instructor: {
+        name: form.instructorName.trim(),
+        tagline: form.instructorTagline.trim(),
+        defaultTone: form.instructorTone.trim(),
+      },
+      bloomBuddy: {
+        name: form.bloomBuddyName.trim(),
+        tagline: form.bloomBuddyTagline.trim(),
+        defaultTone: form.bloomBuddyTone.trim(),
       },
       voice: {
         engine: form.engine,
@@ -345,6 +362,7 @@ export default function AiControl() {
       llm: {
         onboardingTemperature: form.onboardingTemperature,
         classroomTemperature: form.classroomTemperature,
+        bloomBuddyTemperature: form.bloomBuddyTemperature,
       },
     }
   }, [form, browserVoices])
@@ -529,10 +547,10 @@ export default function AiControl() {
             <Cpu className="w-5 h-5 text-[#00CED1]" />
           </div>
           <div>
-            <h2 className="text-white font-semibold">Global Calyx configuration</h2>
+            <h2 className="text-white font-semibold">Global AI configuration</h2>
             <p className="text-white/60 text-sm mt-1">
-              These settings apply to live classes, onboarding, and future AI runtime flows.
-              Curriculum content stays in Curriculum Studio; this panel controls how Calyx delivers it.
+              AI Instructor handles live classes and onboarding. Bloom Buddy handles SEL check-ins only.
+              Curriculum content stays in Curriculum Studio.
             </p>
           </div>
         </div>
@@ -556,23 +574,60 @@ export default function AiControl() {
         )}
 
         <Card
-          title="Calyx persona"
-          description="Default personality when a lesson or walkthrough does not override tone."
+          title="AI Instructor"
+          description="Teaches curriculum in live class and guides onboarding walkthroughs."
         >
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <Label>Instructor Name</Label>
+              <Label>Name</Label>
               <TextInput
-                value={form.personaName}
-                onChange={(event) => updateField('personaName', event.target.value)}
+                value={form.instructorName}
+                onChange={(event) => updateField('instructorName', event.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Tagline</Label>
+              <TextInput
+                value={form.instructorTagline}
+                onChange={(event) => updateField('instructorTagline', event.target.value)}
               />
             </div>
             <div className="md:col-span-2">
-              <Label>Default tone</Label>
+              <Label>Teaching tone</Label>
               <TextArea
-                value={form.defaultTone}
-                onChange={(event) => updateField('defaultTone', event.target.value)}
-                placeholder="warm, encouraging, and clear"
+                value={form.instructorTone}
+                onChange={(event) => updateField('instructorTone', event.target.value)}
+                placeholder="clear, patient, and encouraging"
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card
+          title="Bloom Buddy (Calyx)"
+          description="SEL only — mood check-ins and emotional support. Does not teach curriculum or onboarding."
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <div>
+              <Label>Name</Label>
+              <TextInput
+                value={form.bloomBuddyName}
+                onChange={(event) => updateField('bloomBuddyName', event.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Tagline</Label>
+              <TextInput
+                value={form.bloomBuddyTagline}
+                onChange={(event) => updateField('bloomBuddyTagline', event.target.value)}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Support tone</Label>
+              <TextArea
+                value={form.bloomBuddyTone}
+                onChange={(event) => updateField('bloomBuddyTone', event.target.value)}
+                placeholder="warm, gentle, and supportive"
               />
             </div>
           </div>
@@ -866,7 +921,7 @@ export default function AiControl() {
               min={ranges.pacing.classDurationMinutes.min}
               max={ranges.pacing.classDurationMinutes.max}
               step={ranges.pacing.classDurationMinutes.step}
-              onChange={(value) => updateField('classDurationMinutes', value)}
+              onChange={(value) => setForm((prev) => ({ ...prev, classDurationMinutes: value }))}
               info={ranges.pacing.classDurationMinutes.info}
             />
           </div>
@@ -896,6 +951,16 @@ export default function AiControl() {
               onChange={(value) => updateField('classroomTemperature', value)}
               hint={ranges.llm.classroomTemperature.hint}
               info={ranges.llm.classroomTemperature.info}
+            />
+            <RangeField
+              label={ranges.llm.bloomBuddyTemperature.label}
+              value={form.bloomBuddyTemperature}
+              min={ranges.llm.bloomBuddyTemperature.min}
+              max={ranges.llm.bloomBuddyTemperature.max}
+              step={ranges.llm.bloomBuddyTemperature.step}
+              onChange={(value) => updateField('bloomBuddyTemperature', value)}
+              hint={ranges.llm.bloomBuddyTemperature.hint}
+              info={ranges.llm.bloomBuddyTemperature.info}
             />
           </div>
         </Card>

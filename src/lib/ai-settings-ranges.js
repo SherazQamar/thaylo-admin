@@ -68,12 +68,12 @@ export const AI_SETTINGS_FIELD_RANGES = {
       info: 'Controls how quickly text is revealed when narration is muted or unavailable. Example: 40 ms/word = faster captions, 80 ms/word = slower reading pace.',
     },
     classDurationMinutes: {
-      min: 10,
-      max: 30,
+      min: 5,
+      max: 15,
       step: 1,
       default: 15,
-      label: 'Default class length (minutes)',
-      info: 'Sets the expected length for a live class session. Example: 15 minutes = standard lesson block; 25 minutes = longer deep-dive class.',
+      label: 'Live session timer (minutes)',
+      info: 'Controls how long the live class runs (5–15 min). Teaching time is duration minus 3 minutes, then Quick Check. Lesson scripts and AI-generated content always stay at 15 minutes and are not affected by this setting.',
     },
   },
   llm: {
@@ -84,7 +84,7 @@ export const AI_SETTINGS_FIELD_RANGES = {
       default: 0.7,
       label: 'Onboarding temperature',
       hint: 'Lower = more predictable responses.',
-      info: 'Controls creativity during onboarding Q&A. Lower values keep Calyx focused and predictable; higher values allow more varied follow-up wording. Example: 0.4 = strict script-like replies, 1.0 = warmer conversational tone.',
+      info: 'Controls creativity during onboarding Q&A with the AI Instructor. Lower values keep responses focused and predictable; higher values allow more varied follow-up wording.',
     },
     classroomTemperature: {
       min: 0,
@@ -94,6 +94,15 @@ export const AI_SETTINGS_FIELD_RANGES = {
       label: 'Classroom temperature',
       hint: 'Lower = more predictable responses.',
       info: 'Controls creativity during live class chat and teaching. Lower values keep explanations consistent; higher values make responses more flexible. Example: 0.5 = structured lesson delivery, 0.9 = more adaptive explanations.',
+    },
+    bloomBuddyTemperature: {
+      min: 0,
+      max: 2,
+      step: 0.05,
+      default: 0.6,
+      label: 'Bloom Buddy temperature',
+      hint: 'Lower = more predictable SEL responses.',
+      info: 'Controls creativity during mood check-ins and emotional support chats. Lower values keep responses steady and reassuring; higher values allow more varied supportive wording.',
     },
   },
 }

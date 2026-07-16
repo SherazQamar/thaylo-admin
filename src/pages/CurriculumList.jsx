@@ -281,9 +281,10 @@ export default function CurriculumList() {
       <CurriculumUploadWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        onCreated={(item) =>
-          navigate(`/super-admin/curriculum/${item.id}`, { state: { previewClass: true } })
-        }
+        onCreated={(item) => {
+          queryClient.setQueryData(curriculumQueryKeys.detail(item.id), item)
+          navigate(`/super-admin/curriculum/${item.id}`)
+        }}
       />
     </SuperAdminLayout>
   )
