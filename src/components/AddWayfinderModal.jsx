@@ -60,6 +60,8 @@ const EMPTY_FORM = {
   email: '',
   specialty: '',
   gradeLevel: '',
+  region: '',
+  languagesSpoken: '',
   isActive: 'true',
 }
 
@@ -91,6 +93,11 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
       return
     }
 
+    const languages = form.languagesSpoken
+      .split(',')
+      .map((lang) => lang.trim())
+      .filter(Boolean)
+
     setPhoneError('')
     await onSubmit?.({
       fullName: form.fullName.trim(),
@@ -98,6 +105,8 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
       phone: normalizePhoneDigits(form.phone),
       specialty: form.specialty || undefined,
       gradeLevel: form.gradeLevel || undefined,
+      region: form.region.trim() || undefined,
+      languagesSpoken: languages.length ? languages : undefined,
       isActive: form.isActive === 'true',
     })
   }
@@ -167,6 +176,28 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
               />
             </Field>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <Field label="Region">
+              <TextInput
+                type="text"
+                placeholder="e.g. R1, 01, Northeast"
+                value={form.region}
+                onChange={(e) => updateField('region', e.target.value)}
+              />
+            </Field>
+            <Field label="Languages Spoken">
+              <TextInput
+                type="text"
+                placeholder="English, Spanish"
+                value={form.languagesSpoken}
+                onChange={(e) => updateField('languagesSpoken', e.target.value)}
+              />
+            </Field>
+          </div>
+          <p className="mt-1.5 text-white/35 text-xs">
+            Separate languages with commas. Region uses your numbering system when ready.
+          </p>
 
           <p className="text-white text-base font-semibold border-b border-white/10 pb-3 mt-6">
             Role & Assignment
