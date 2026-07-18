@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Search,
   Pencil,
@@ -7,10 +8,21 @@ import {
   SlidersHorizontal,
   Eye,
   FileText,
+  ChevronDown,
 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
+import ListPagination from '../components/ListPagination'
+import { getApiErrorMessage } from '../lib/auth-api'
+import { useDebouncedValue } from '../lib/useDebouncedValue'
+import {
+  ASSIGNABLE_ROLES,
+  fetchSystemUsers,
+  formatSystemRole,
+  systemUserQueryKeys,
+  updateSystemUserRole,
+} from '../lib/system-users-api'
 
-const TABS = ['ALL USERS', 'ADMIN', 'WAY FINDERS', 'PARENTS', 'STUDENTS']
+const TABS = ['ALL USERS', 'ADMIN', 'WAY FINDERS', 'PARENTS', 'STUDENTS', 'ROLES']
 
 /* ============================================================
    Shared atoms
@@ -536,6 +548,181 @@ function StudentsView() {
   )
 }
 
+function RolesView() {
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [actionError, setActionError] = useState(null)
+  const [actionMessage, setActionMessage] = useState(null)
+  const [updatingId, setUpdatingId] = useState(null)
+  const debouncedSearch = useDebouncedValue(search)
+
+  const listParams = {
+    page,
+    limit: 10,
+    search: debouncedSearch || undefined,
+  }
+
+  const usersQuery = useQuery({
+    queryKey: systemUserQueryKeys.list(listParams),
+    queryFn: () => fetchSystemUsers(listParams),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ userId, role }) => updateSystemUserRole(userId, role),
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ['super-admin', 'users'] })
+      setUpdatingId(null)
+      setActionError(null)
+      setActionMessage(
+        `Updated ${updated.name ?? updated.email} to ${formatSystemRole(updated.role)}.`,
+      )
+    },
+    onError: (err) => {
+      setUpdatingId(null)
+      setActionMessage(null)
+      setActionError(getApiErrorMessage(err))
+    },
+  })
+
+  const users = usersQuery.data?.items ?? []
+  const meta = usersQuery.data?.meta
+
+  return (
+    <>
+      <HeaderRow
+        title="Role Management"
+        sub="Assign or change roles for administrators, wayfinders, and other accounts."
+      />
+
+      <div
+        className="mt-6 rounded-2xl p-6"
+        style={{ backgroundColor: '#313044', borderRadius: '18px' }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h3 className="text-white text-lg font-semibold">Roles</h3>
+            <p className="text-white/40 text-xs mt-1">
+              Role changes apply immediately. Only Super Admins can manage roles.
+            </p>
+          </div>
+
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40"
+            />
+            <input
+              type="search"
+              placeholder="Search by name or email"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              className="w-full sm:w-[300px] pl-9 pr-4 py-2 rounded-full bg-white/[0.06] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40 placeholder:text-white/40"
+            />
+          </div>
+        </div>
+
+        {(actionMessage || actionError) && (
+          <div
+            className={`mb-4 rounded-xl px-4 py-3 text-sm ${
+              actionError
+                ? 'bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20'
+                : 'bg-[#00CED1]/10 text-[#00CED1] border border-[#00CED1]/20'
+            }`}
+          >
+            {actionError ?? actionMessage}
+          </div>
+        )}
+
+        {usersQuery.isLoading && (
+          <p className="text-white/50 text-sm py-8 text-center">Loading users…</p>
+        )}
+        {usersQuery.isError && (
+          <p className="text-[#FF6F6F] text-sm py-8 text-center">
+            {getApiErrorMessage(usersQuery.error)}
+          </p>
+        )}
+        {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 && (
+          <p className="text-white/50 text-sm py-8 text-center">No users found.</p>
+        )}
+
+        {!usersQuery.isLoading && !usersQuery.isError && users.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead>
+                <tr>
+                  <Th>Name</Th>
+                  <Th>Email</Th>
+                  <Th>Current Role</Th>
+                  <Th>Status</Th>
+                  <Th align="right">Assign / Change Role</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, i) => (
+                  <Row key={u.id} striped={i % 2 === 0}>
+                    <Td className="text-white font-medium">{u.name ?? 'Unnamed'}</Td>
+                    <Td className="text-white/70">{u.email}</Td>
+                    <Td>
+                      <span className="inline-flex items-center justify-center rounded-full border border-[#00CED1] text-[#00CED1] bg-[#00CED1]/10 px-3 py-1 text-xs font-medium">
+                        {formatSystemRole(u.role)}
+                      </span>
+                    </Td>
+                    <Td>
+                      <StatusPill status={u.isActive ? 'Active' : 'Inactive'} />
+                    </Td>
+                    <Td align="right">
+                      <div className="relative inline-flex items-center">
+                        <select
+                          value={u.role}
+                          disabled={updatingId === u.id && updateMutation.isPending}
+                          onChange={(e) => {
+                            const nextRole = e.target.value
+                            if (nextRole === u.role) return
+                            setActionError(null)
+                            setActionMessage(null)
+                            setUpdatingId(u.id)
+                            updateMutation.mutate({ userId: u.id, role: nextRole })
+                          }}
+                          className="appearance-none rounded-full bg-white/[0.06] border border-white/10 text-white text-xs font-semibold pl-4 pr-9 py-2 outline-none focus:border-[#00CED1]/40 disabled:opacity-50"
+                        >
+                          {ASSIGNABLE_ROLES.map((role) => (
+                            <option
+                              key={role.value}
+                              value={role.value}
+                              className="bg-[#313044]"
+                            >
+                              {role.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-3 text-white/50 pointer-events-none"
+                        />
+                      </div>
+                    </Td>
+                  </Row>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <ListPagination
+          meta={meta}
+          onPageChange={setPage}
+          isLoading={usersQuery.isFetching}
+          itemLabel="users"
+        />
+      </div>
+    </>
+  )
+}
+
 /* ============================================================
    Page
 ============================================================ */
@@ -575,6 +762,7 @@ export default function AllUsersManagement() {
       {activeTab === 'WAY FINDERS' && <WayFindersView />}
       {activeTab === 'PARENTS' && <ParentsView />}
       {activeTab === 'STUDENTS' && <StudentsView />}
+      {activeTab === 'ROLES' && <RolesView />}
     </SuperAdminLayout>
   )
 }

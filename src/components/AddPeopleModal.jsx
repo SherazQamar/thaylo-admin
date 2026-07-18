@@ -52,7 +52,7 @@ export default function AddPeopleModal({ open, onClose, onInvite }) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="AllexFiller705842@gmail.com"
+            placeholder="JaneDoe@gmail.com"
             className="w-full px-4 py-3.5 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40 placeholder:text-white/40"
           />
         </div>

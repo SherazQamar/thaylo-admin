@@ -47,6 +47,7 @@ export const ONBOARDING_PAGE_SIZE = 10
 export const onboardingQueryKeys = {
   list: (params) => ['admin', 'onboarding-walkthroughs', params],
   detail: (id) => ['admin', 'onboarding-walkthroughs', id],
+  results: (id, params) => ['admin', 'onboarding-walkthroughs', id, 'results', params],
 }
 
 export const ONBOARDING_TIMING_LABELS = {
@@ -98,6 +99,26 @@ export async function fetchOnboardingWalkthroughs(params = {}) {
 
 export async function fetchOnboardingWalkthrough(id) {
   const { data } = await api.get(`/admin/onboarding-walkthroughs/${id}`)
+  return data.data
+}
+
+/**
+ * Completed parent/student feedback for a walkthrough within a time range.
+ * When from/until are omitted, the API defaults to the survey start/end window.
+ *
+ * @param {number} id
+ * @param {{ page?: number; from?: string; until?: string; audience?: 'PARENT' | 'STUDENT' }} [params]
+ */
+export async function fetchOnboardingWalkthroughResults(id, params = {}) {
+  const { data } = await api.get(`/admin/onboarding-walkthroughs/${id}/results`, {
+    params: {
+      page: params.page ?? 1,
+      limit: 10,
+      ...(params.from ? { from: params.from } : {}),
+      ...(params.until ? { until: params.until } : {}),
+      ...(params.audience ? { audience: params.audience } : {}),
+    },
+  })
   return data.data
 }
 
