@@ -17,6 +17,14 @@ const STATUS_OPTIONS = [
   { value: 'PUBLISHED', label: 'Published' },
 ]
 
+function toDateTimeLocalValue(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function Field({ label, hint, children }) {
   return (
     <label className="block">
@@ -128,8 +136,8 @@ export default function OnboardingWalkthroughModal({
           initial.estimatedMinutes != null ? String(initial.estimatedMinutes) : '',
         tone: initial.tone ?? '',
         content: initial.content ?? '',
-        showFrom: initial.showFrom ? String(initial.showFrom).slice(0, 10) : '',
-        showUntil: initial.showUntil ? String(initial.showUntil).slice(0, 10) : '',
+        showFrom: toDateTimeLocalValue(initial.showFrom),
+        showUntil: toDateTimeLocalValue(initial.showUntil),
       })
       return
     }
@@ -267,11 +275,11 @@ export default function OnboardingWalkthroughModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field
-              label="Show from"
-              hint="First day parent/child will see this assessment (required when published)."
+              label="Survey start"
+              hint="When parents/students can begin this feedback survey (required when published)."
             >
               <TextInput
-                type="date"
+                type="datetime-local"
                 value={form.showFrom}
                 onChange={(e) => updateField('showFrom', e.target.value)}
                 required={form.status === 'PUBLISHED'}
@@ -279,11 +287,11 @@ export default function OnboardingWalkthroughModal({
             </Field>
 
             <Field
-              label="Show until"
-              hint="Last day the assessment is shown. After this, no one sees it until you set new dates."
+              label="Survey end"
+              hint="After this time the survey is hidden until you set a new window."
             >
               <TextInput
-                type="date"
+                type="datetime-local"
                 value={form.showUntil}
                 onChange={(e) => updateField('showUntil', e.target.value)}
                 min={form.showFrom || undefined}

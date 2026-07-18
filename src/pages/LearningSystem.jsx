@@ -1,8 +1,115 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Send, Pencil, Eye, UserRound } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 
 const TABS = ['CONTENT', 'MODULE', 'LESSON']
+const PAGE_SUB = 'Overview of Current Learning.'
+
+/**
+ * Module = one complete subject area within a grade (e.g. 4th ELA).
+ * Demo ships a single module.
+ */
+const DEMO_MODULE = {
+  name: '4th ELA',
+  grade: '4',
+  subject: 'ELA',
+  lessons: 60,
+  avg: '72%',
+  status: 'Active',
+}
+
+/**
+ * Avg completion = students who completed ÷ students who started
+ * (lesson-level; module avg is the mean of its lesson completion rates).
+ */
+/**
+ * Reteach rate = % of lesson starts that required a retake (attempt 2+).
+ * Brackets: Low <15%, Medium 15–35%, High >35%.
+ */
+const RETEACH_BRACKETS = [
+  { label: 'Low', maxExclusive: 15 },
+  { label: 'Medium', maxExclusive: 36 },
+  { label: 'High', maxExclusive: Infinity },
+]
+
+export function reteachBracketLabel(ratePercent) {
+  const rate = Number(ratePercent)
+  if (!Number.isFinite(rate)) return '—'
+  const hit = RETEACH_BRACKETS.find((b) => rate < b.maxExclusive)
+  return hit?.label ?? '—'
+}
+
+const FOURTH_ELA_LESSON_TITLES = [
+  'Intensity Scaling',
+  'Contextual Fit',
+  'Negative/Positive Weight',
+  'Synonym Substitution',
+  'Precision Check',
+  'Plot Summary',
+  'Universal Truth identification',
+  'Theme Extraction',
+  'Abstract Categorization',
+  'Cross-Story Theme',
+  'Fact Sorting',
+  'Claim Construction',
+  'Source Integration',
+  'Contrast Detection',
+  'Combined Truth',
+  'Sentence Labeling',
+  'Length Balancing',
+  'Cadence Control',
+  'Complex Joining',
+  'Rhythm Revision',
+  'Word Choice Clues',
+  'Evidence Selection',
+  'Point of View Labeling',
+  'Audience Intent',
+  'Bias Awareness',
+  'First Person Perspective',
+  'Person Perspective',
+  'Perspective Shifting',
+  'Internal Monologue',
+  'Voice Consistency',
+  'Multiple Affixes',
+  'Domain Root Mapping',
+  'Meaning Synthesis',
+  'Spelling Logic',
+  'Word Transformation',
+  'Tone Identification',
+  'Purpose Detection',
+  'Key Point Extraction',
+  'Visual/Oral Link',
+  'Respectful Critique',
+  'Example Integration',
+  'Detail Relevance',
+  'Elaboration',
+  'Logical Sequencing',
+  'Transitioning',
+  'Environment Mapping',
+  'Catalyst Identification',
+  'Cultural Norms',
+  'Comparative Geography',
+  'Global Empathy',
+  'Evidence Variety',
+  'Logical Connection',
+  'Counter-Thought Awareness',
+  'Formal Tone',
+  'Closing Call',
+  'Author Verification',
+  'Date Check',
+  'Fact vs. Ad',
+  'Purpose Verification',
+  'Cross-Checking',
+]
+
+const MODULE_LESSONS = FOURTH_ELA_LESSON_TITLES.map((title, index) => ({
+  n: index + 1,
+  name: `Lesson ${index + 1}: ${title}`,
+  type: 'AI Lesson',
+  duration: '15 min',
+  avg: '75%',
+  status: 'Active',
+}))
 
 /* ============================================================
    Atoms
@@ -19,9 +126,7 @@ function StatCard({ label, value }) {
       </div>
       <div>
         <p className="text-white/60 text-xs">{label}</p>
-        <p className="text-white text-xl font-bold leading-tight mt-1">
-          {value}
-        </p>
+        <p className="text-white text-xl font-bold leading-tight mt-1">{value}</p>
       </div>
     </div>
   )
@@ -41,9 +146,7 @@ function Card({ title, children }) {
       className="mt-5 rounded-2xl p-6"
       style={{ backgroundColor: '#313044', borderRadius: '18px' }}
     >
-      {title && (
-        <h3 className="text-white text-lg font-semibold mb-5">{title}</h3>
-      )}
+      {title && <h3 className="text-white text-lg font-semibold mb-5">{title}</h3>}
       {children}
     </div>
   )
@@ -79,9 +182,7 @@ function Header({ title, sub, right }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
       <div className="space-y-2">
-        <h2 className="text-white text-3xl font-bold tracking-tight">
-          {title}
-        </h2>
+        <h2 className="text-white text-3xl font-bold tracking-tight">{title}</h2>
         <p className="text-white/50 text-sm">{sub}</p>
       </div>
       {right && <div className="flex items-center gap-3">{right}</div>}
@@ -116,13 +217,14 @@ function Td({ children, align = 'left', className = '' }) {
   )
 }
 
-function ActionIcons({ items }) {
+function ActionIcons({ items, onClick }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
       {items.map((It, i) => (
         <button
           key={i}
           type="button"
+          onClick={onClick}
           className="w-7 h-7 rounded-full flex items-center justify-center text-[#00CED1] hover:bg-[#00CED1]/10"
           aria-label="Action"
         >
@@ -137,59 +239,51 @@ function ActionIcons({ items }) {
    CONTENT tab
 ============================================================ */
 
-const MODULES = [
-  { name: 'Reading', lessons: 8, avg: '72%', status: 'Active' },
-  { name: 'Reading', lessons: 8, avg: '72%', status: 'Active' },
-]
-
-function ContentView() {
+function ContentView({ onOpenModule }) {
   return (
     <>
       <Header
         title="Content"
-        sub="Overview of Thaylo Global AI School Parent Management."
+        sub={PAGE_SUB}
         right={<PrimaryButton>Add Module</PrimaryButton>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-        <StatCard label="Modules" value="6" />
-        <StatCard label="total Lessons" value="42" />
+        <StatCard label="Total Modules" value="1" />
+        <StatCard label="Total Lessons" value={String(DEMO_MODULE.lessons)} />
         <StatCard label="Avg Completion" value="68%" />
       </div>
 
       <Card title="Modules List">
-        <table className="w-full text-sm min-w-[700px]">
-          <thead>
-            <tr>
-              <Th>Module Name</Th>
-              <Th>Lessons</Th>
-              <Th>Mastery Avg</Th>
-              <Th>Status</Th>
-              <Th align="right">Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {MODULES.map((m, i) => (
-              <tr
-                key={i}
-                style={{
-                  backgroundColor:
-                    i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
-                }}
-              >
-                <Td className="text-white/80">{m.name}</Td>
-                <Td className="text-white/70">{m.lessons}</Td>
-                <Td className="text-white/70">{m.avg}</Td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              <tr>
+                <Th>Module Name</Th>
+                <Th>Lessons</Th>
+                <Th>Mastery Avg</Th>
+                <Th>Status</Th>
+                <Th align="right">Action</Th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                <Td className="text-white/80">{DEMO_MODULE.name}</Td>
+                <Td className="text-white/70">{DEMO_MODULE.lessons}</Td>
+                <Td className="text-white/70">{DEMO_MODULE.avg}</Td>
                 <Td>
                   <ActiveBadge />
                 </Td>
                 <Td align="right">
-                  <ActionIcons items={[Pencil, Eye, UserRound]} />
+                  <ActionIcons
+                    items={[Pencil, Eye, UserRound]}
+                    onClick={onOpenModule}
+                  />
                 </Td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </Card>
     </>
   )
@@ -199,29 +293,12 @@ function ContentView() {
    MODULE tab
 ============================================================ */
 
-const LESSONS = [
-  {
-    name: 'Lesson1 :Into to theme',
-    type: 'AI Lesson',
-    duration: '15 min',
-    avg: '75%',
-    status: 'Active',
-  },
-  {
-    name: 'Lesson1 :Into to theme',
-    type: 'AI Lesson',
-    duration: '15 min',
-    avg: '75%',
-    status: 'Active',
-  },
-]
-
-function ModuleView() {
+function ModuleView({ onOpenLesson }) {
   return (
     <>
       <Header
         title="Module Detail View"
-        sub="Overview of Thaylo Global AI School Parent Management."
+        sub={PAGE_SUB}
         right={
           <>
             <PrimaryButton>Edit Module</PrimaryButton>
@@ -231,46 +308,51 @@ function ModuleView() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-        <StatCard label="Lesson" value="8" />
+        <StatCard label="Lessons" value={String(DEMO_MODULE.lessons)} />
         <StatCard label="Avg Score" value="72%" />
-        <StatCard label="Reteach Rate" value="Medium" />
+        <StatCard label="Reteach Rate" value={reteachBracketLabel(22)} />
       </div>
 
-      <Card title="Lesson  List">
-        <table className="w-full text-sm min-w-[700px]">
-          <thead>
-            <tr>
-              <Th>Lesson Name</Th>
-              <Th>Type</Th>
-              <Th>Duration</Th>
-              <Th>Avg Score</Th>
-              <Th>Status</Th>
-              <Th align="right">Action</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {LESSONS.map((l, i) => (
-              <tr
-                key={i}
-                style={{
-                  backgroundColor:
-                    i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
-                }}
-              >
-                <Td className="text-white/80">{l.name}</Td>
-                <Td className="text-white/70">{l.type}</Td>
-                <Td className="text-white/70">{l.duration}</Td>
-                <Td className="text-white/70">{l.avg}</Td>
-                <Td>
-                  <ActiveBadge />
-                </Td>
-                <Td align="right">
-                  <ActionIcons items={[Pencil, Eye]} />
-                </Td>
+      <Card title="Lesson List">
+        <div className="overflow-x-auto max-h-[520px]">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="sticky top-0 bg-[#313044]">
+              <tr>
+                <Th>Lesson Name</Th>
+                <Th>Type</Th>
+                <Th>Duration</Th>
+                <Th>Avg Score</Th>
+                <Th>Status</Th>
+                <Th align="right">Action</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {MODULE_LESSONS.map((l, i) => (
+                <tr
+                  key={l.n}
+                  style={{
+                    backgroundColor:
+                      i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
+                  }}
+                >
+                  <Td className="text-white/80">{l.name}</Td>
+                  <Td className="text-white/70">{l.type}</Td>
+                  <Td className="text-white/70">{l.duration}</Td>
+                  <Td className="text-white/70">{l.avg}</Td>
+                  <Td>
+                    <ActiveBadge />
+                  </Td>
+                  <Td align="right">
+                    <ActionIcons
+                      items={[Pencil, Eye]}
+                      onClick={() => onOpenLesson?.(l)}
+                    />
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </>
   )
@@ -281,15 +363,12 @@ function ModuleView() {
 ============================================================ */
 
 const FLOW = [
-  { n: 1, title: 'Tech AI' },
+  { n: 1, title: 'Teach' },
   { n: 2, title: 'Formative Check' },
   { n: 3, title: 'Reteach (if needed)' },
   { n: 4, title: 'Final Check' },
   { n: 5, title: 'Bloom Buddy (SEL)' },
 ]
-
-const FLOW_DESC =
-  'System triggered automatic retries for most, but 4 require manual intervention.'
 
 const OBJECTIVES = [
   {
@@ -302,12 +381,14 @@ const OBJECTIVES = [
   },
 ]
 
-function LessonView() {
+function LessonView({ lesson }) {
+  const active = lesson ?? MODULE_LESSONS[0]
+
   return (
     <>
       <Header
-        title="Lesson: Intro to Theme"
-        sub="Reading – Theme & Evidence : Duration: 15 mins"
+        title={`Lesson: ${active.name.replace(/^Lesson \d+:\s*/, '')}`}
+        sub={`${DEMO_MODULE.name} · Duration: ${active.duration}`}
         right={
           <>
             <PrimaryButton>Edit Lesson</PrimaryButton>
@@ -319,24 +400,15 @@ function LessonView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
         <StatCard label="Avg Score" value="75%" />
         <StatCard label="Completion Rate" value="82%" />
-        <StatCard label="Reteach Rate" value="Medium" />
+        <StatCard label="Reteach Rate" value={reteachBracketLabel(22)} />
       </div>
 
       <Card title="Lesson Flow">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
           {FLOW.map((f) => (
-            <div key={f.n}>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[#FFC542] text-base font-bold">
-                  {f.n}
-                </span>
-                <span className="text-white text-sm font-semibold">
-                  {f.title}
-                </span>
-              </div>
-              <p className="text-white/50 text-xs mt-2 leading-relaxed">
-                {FLOW_DESC}
-              </p>
+            <div key={f.n} className="flex items-baseline gap-2">
+              <span className="text-[#FFC542] text-base font-bold">{f.n}</span>
+              <span className="text-white text-sm font-semibold">{f.title}</span>
             </div>
           ))}
         </div>
@@ -344,9 +416,7 @@ function LessonView() {
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white text-lg font-semibold">
-            Learning Objective
-          </h3>
+          <h3 className="text-white text-lg font-semibold">Learning Objective</h3>
           <span className="flex items-center gap-1.5 text-[#00CED1] text-xs font-semibold tracking-wider">
             LIVE
           </span>
@@ -377,14 +447,20 @@ function LessonView() {
 
 export default function LearningSystem() {
   const [tab, setTab] = useState('CONTENT')
+  const [selectedLesson, setSelectedLesson] = useState(MODULE_LESSONS[0])
+
+  const openModule = () => setTab('MODULE')
+  const openLesson = (lesson) => {
+    setSelectedLesson(lesson)
+    setTab('LESSON')
+  }
+
+  const tabs = useMemo(() => TABS, [])
 
   return (
-    <SuperAdminLayout
-      title="Super Admin Dashboard"
-      userSubtitle="Wayfinder"
-    >
+    <SuperAdminLayout title="Learning System" userSubtitle="Super Admin">
       <div className="flex items-center gap-8 border-b border-white/5 -mx-6 lg:-mx-10 px-6 lg:px-10 mb-6 overflow-x-auto">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const active = tab === t
           return (
             <button
@@ -404,9 +480,9 @@ export default function LearningSystem() {
         })}
       </div>
 
-      {tab === 'CONTENT' && <ContentView />}
-      {tab === 'MODULE' && <ModuleView />}
-      {tab === 'LESSON' && <LessonView />}
+      {tab === 'CONTENT' && <ContentView onOpenModule={openModule} />}
+      {tab === 'MODULE' && <ModuleView onOpenLesson={openLesson} />}
+      {tab === 'LESSON' && <LessonView lesson={selectedLesson} />}
     </SuperAdminLayout>
   )
 }

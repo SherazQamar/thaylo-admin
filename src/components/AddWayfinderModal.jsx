@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import {
   formatPhoneInput,
@@ -7,6 +7,10 @@ import {
   PHONE_INPUT_PLACEHOLDER,
   PHONE_VALIDATION_MESSAGE,
 } from '../lib/phone'
+import {
+  WAYFINDER_HIRING_REGIONS,
+  hiringRegionByCode,
+} from '../lib/wayfinder-hiring-regions'
 
 const SPECIALTY_OPTIONS = ['Math Coach', 'Lead Mentor', 'Counselor']
 const GRADE_OPTIONS = ['K4', 'K5', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10']
@@ -40,11 +44,15 @@ function SelectInput({ value, onChange, placeholder, options }) {
         <option value="" className="bg-[#313044]">
           {placeholder}
         </option>
-        {options.map((opt) => (
-          <option key={opt} value={opt} className="bg-[#313044]">
-            {opt}
-          </option>
-        ))}
+        {options.map((opt) => {
+          const optionValue = typeof opt === 'string' ? opt : opt.value
+          const optionLabel = typeof opt === 'string' ? opt : opt.label
+          return (
+            <option key={optionValue} value={optionValue} className="bg-[#313044]">
+              {optionLabel}
+            </option>
+          )
+        })}
       </select>
       <ChevronDown
         size={16}
@@ -71,11 +79,27 @@ const EMPTY_FORM = {
 export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmitting, error }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [phoneError, setPhoneError] = useState('')
+  const [regionError, setRegionError] = useState('')
+
+  const selectedRegion = useMemo(
+    () => hiringRegionByCode(form.region),
+    [form.region],
+  )
+
+  const regionOptions = useMemo(
+    () =>
+      WAYFINDER_HIRING_REGIONS.map((r) => ({
+        value: r.code,
+        label: r.label,
+      })),
+    [],
+  )
 
   useEffect(() => {
     if (!open) {
       setForm(EMPTY_FORM)
       setPhoneError('')
+      setRegionError('')
     }
   }, [open])
 
@@ -93,19 +117,25 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
       return
     }
 
+    if (!hiringRegionByCode(form.region)) {
+      setRegionError('Select the hiring / coverage region for this Wayfinder.')
+      return
+    }
+
     const languages = form.languagesSpoken
       .split(',')
       .map((lang) => lang.trim())
       .filter(Boolean)
 
     setPhoneError('')
+    setRegionError('')
     await onSubmit?.({
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       phone: normalizePhoneDigits(form.phone),
       specialty: form.specialty || undefined,
       gradeLevel: form.gradeLevel || undefined,
-      region: form.region.trim() || undefined,
+      region: form.region,
       languagesSpoken: languages.length ? languages : undefined,
       isActive: form.isActive === 'true',
     })
@@ -178,13 +208,17 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <Field label="Region">
-              <TextInput
-                type="text"
-                placeholder="e.g. R1, 01, Northeast"
+            <Field label="Hiring Region">
+              <SelectInput
                 value={form.region}
-                onChange={(e) => updateField('region', e.target.value)}
+                onChange={(e) => {
+                  setRegionError('')
+                  updateField('region', e.target.value)
+                }}
+                placeholder="Select hiring region"
+                options={regionOptions}
               />
+              {regionError && <p className="mt-1.5 text-xs text-[#FF6F6F]">{regionError}</p>}
             </Field>
             <Field label="Languages Spoken">
               <TextInput
@@ -196,8 +230,14 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
             </Field>
           </div>
           <p className="mt-1.5 text-white/35 text-xs">
-            Separate languages with commas. Region uses your numbering system when ready.
+            Hiring region sets operational hours / timezone (not where they live). Separate
+            languages with commas.
           </p>
+          {selectedRegion && (
+            <p className="mt-2 text-white/55 text-xs">
+              Timezone: {selectedRegion.timeZoneLabel} ({selectedRegion.timeZone})
+            </p>
+          )}
 
           <p className="text-white text-base font-semibold border-b border-white/10 pb-3 mt-6">
             Role & Assignment

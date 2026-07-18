@@ -11,6 +11,13 @@ import { adminQueryKeys, createWayfinder, fetchWayfinders, resendWayfinderInvite
 import { getApiErrorMessage } from '../lib/auth-api'
 import { formatPhoneDisplay } from '../lib/phone'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
+import { hiringRegionByCode } from '../lib/wayfinder-hiring-regions'
+
+function formatWayfinderRegion(region) {
+  const match = hiringRegionByCode(region)
+  if (match) return match.label
+  return region?.trim() || '—'
+}
 
 function AccountStatusBadge({ invitePending, isOnline }) {
   if (invitePending) {
@@ -67,7 +74,7 @@ function WayfinderRow({ w, onViewStudents, onAssign, onResendInvite, isResending
       </div>
 
       <p className="text-white/80 text-sm font-medium lg:justify-self-start">
-        {w.region?.trim() || '—'}
+        {formatWayfinderRegion(w.region)}
       </p>
 
       <p className="text-white/60 text-sm truncate lg:justify-self-start" title={languages}>
@@ -121,7 +128,7 @@ function ColumnHeaders() {
       className={`hidden lg:grid ${ROW_GRID} px-6 pb-2 text-white/35 text-[11px] font-medium uppercase tracking-wider`}
     >
       <span>Wayfinder</span>
-      <span>Region</span>
+      <span>Hiring region</span>
       <span>Languages</span>
       <span>Students</span>
       <span>Status</span>

@@ -38,7 +38,7 @@ function withDefaultPagination(params = {}) {
  */
 
 /**
- * @typedef {{ fullName: string; email: string; phone: string; specialty?: string; gradeLevel?: string; region?: string; languagesSpoken?: string[]; isActive?: boolean }} CreateWayfinderPayload
+ * @typedef {{ fullName: string; email: string; phone: string; specialty?: string; gradeLevel?: string; region: string; languagesSpoken?: string[]; isActive?: boolean }} CreateWayfinderPayload
  */
 
 /**
