@@ -3,21 +3,18 @@ import { Volume2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logoutAdmin } from '../lib/auth-session'
 import AdminLayout from '../components/AdminLayout'
-import RoleManagementDrawer from '../components/RoleManagementDrawer'
-import RoleManagementModal from '../components/RoleManagementModal'
-import AddPeopleModal from '../components/AddPeopleModal'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
 
 const NOTIFICATIONS = [
   {
     key: 'struggling',
     title: 'Student Struggling Alerts',
-    sub: 'Notify when student fails 3+ times',
+    sub: 'Yellow (1 fail), orange (2), red (3+) lesson attempts',
   },
   {
     key: 'sel',
     title: 'SEL Red Flag Alerts',
-    sub: 'Notify on low mood 3+ days',
+    sub: 'Notify on 3+ consecutive low-mood days',
   },
   {
     key: 'parent',
@@ -33,10 +30,7 @@ const NOTIFICATIONS = [
 
 function Card({ title, children }) {
   return (
-    <section
-      className="rounded-2xl p-6"
-      style={{ backgroundColor: '#313044' }}
-    >
+    <section className="rounded-2xl p-6" style={{ backgroundColor: '#313044' }}>
       <h3 className="text-white text-lg font-semibold border-b border-white/10 pb-4">
         {title}
       </h3>
@@ -47,9 +41,7 @@ function Card({ title, children }) {
 
 function Label({ children }) {
   return (
-    <span className="block text-white text-sm font-semibold mb-2">
-      {children}
-    </span>
+    <span className="block text-white text-sm font-semibold mb-2">{children}</span>
   )
 }
 
@@ -97,9 +89,7 @@ function NotificationRow({ title, sub, checked, onChange }) {
         <Volume2 size={18} className="text-[#00CED1]" strokeWidth={1.75} />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-semibold leading-tight">
-          {title}
-        </p>
+        <p className="text-white text-sm font-semibold leading-tight">{title}</p>
         <p className="text-white/50 text-xs mt-1">{sub}</p>
       </div>
       <Toggle checked={checked} onChange={onChange} />
@@ -117,10 +107,7 @@ function AccountInformation() {
         </div>
         <div>
           <Label>Email Address</Label>
-          <TextInput
-            type="email"
-            placeholder="AllexFiller705842@gmail.com"
-          />
+          <TextInput type="email" placeholder="JaneDoe@gmail.com" />
         </div>
       </div>
 
@@ -164,43 +151,6 @@ function Notifications() {
   )
 }
 
-function RoleManagement({ onManage }) {
-  return (
-    <Card title="Role Management">
-      <div className="flex items-center justify-between py-3">
-        <div>
-          <p className="text-white text-sm font-semibold">Current Role</p>
-          <p className="text-white/50 text-xs mt-1">Your permission level</p>
-        </div>
-        <span
-          className="inline-flex items-center justify-center rounded-full border border-[#00CED1] text-[#00CED1] text-xs font-medium px-3 py-1"
-          style={{ backgroundColor: 'rgba(0,206,209,0.06)' }}
-        >
-          Admin
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-t border-white/5">
-        <div>
-          <p className="text-white text-sm font-semibold">
-            Assign / Change Roles
-          </p>
-          <p className="text-white/50 text-xs mt-1">
-            Manage roles for all administrators and wayfinders
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onManage}
-          className="rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-xs font-semibold px-5 py-2 transition-colors"
-        >
-          Manage Roles
-        </button>
-      </div>
-    </Card>
-  )
-}
-
 function DangerZone({ onLogout }) {
   return (
     <Card title="Danger Zone">
@@ -225,17 +175,12 @@ function DangerZone({ onLogout }) {
 
 export default function Settings() {
   const navigate = useNavigate()
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [roleModalOpen, setRoleModalOpen] = useState(false)
-  const [addPeopleOpen, setAddPeopleOpen] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
 
   return (
-    <AdminLayout title="Settings" userSubtitle="Super Admin">
+    <AdminLayout title="Settings" userSubtitle="Admin">
       <div className="space-y-2">
-        <h2 className="text-white text-3xl font-bold tracking-tight">
-          Settings
-        </h2>
+        <h2 className="text-white text-3xl font-bold tracking-tight">Settings</h2>
         <p className="text-white/50 text-sm">
           Manage account preferences and system configuration.
         </p>
@@ -244,31 +189,9 @@ export default function Settings() {
       <div className="flex flex-col gap-5 mt-6">
         <AccountInformation />
         <Notifications />
-        <RoleManagement onManage={() => setDrawerOpen(true)} />
         <DangerZone onLogout={() => setLogoutOpen(true)} />
       </div>
 
-      {/* Drawers + modals */}
-      <RoleManagementDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onActionClick={() => {
-          setDrawerOpen(false)
-          setRoleModalOpen(true)
-        }}
-      />
-      <RoleManagementModal
-        open={roleModalOpen}
-        onClose={() => setRoleModalOpen(false)}
-        onAdd={() => {
-          setRoleModalOpen(false)
-          setAddPeopleOpen(true)
-        }}
-      />
-      <AddPeopleModal
-        open={addPeopleOpen}
-        onClose={() => setAddPeopleOpen(false)}
-      />
       <LogoutConfirmModal
         open={logoutOpen}
         onClose={() => setLogoutOpen(false)}

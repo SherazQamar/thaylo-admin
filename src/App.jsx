@@ -19,6 +19,7 @@ import CurriculumList from './pages/CurriculumList'
 import CurriculumRefinement from './pages/CurriculumRefinement'
 import Insights from './pages/Insights'
 import AiControl from './pages/AiControl'
+import BillingPlans from './pages/BillingPlans'
 import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
 import SecurityLogs from './pages/SecurityLogs'
 import NotFound from './pages/NotFound'
@@ -184,7 +185,7 @@ function App() {
           path="/super-admin/billing"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="Billing & Plans" />
+              <BillingPlans />
             </ProtectedRoute>
           }
         />

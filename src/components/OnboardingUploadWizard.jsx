@@ -182,7 +182,11 @@ export default function OnboardingUploadWizard({
   async function handlePublish() {
     if (!parseResult) return
     if (status === 'PUBLISHED' && (!showFrom || !showUntil)) {
-      setError('Please choose a show from and show until date before publishing.')
+      setError('Please choose a survey start and end time before publishing.')
+      return
+    }
+    if (showFrom && showUntil && showFrom > showUntil) {
+      setError('Survey start time must be on or before the end time.')
       return
     }
     setError('')
@@ -421,12 +425,12 @@ export default function OnboardingUploadWizard({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="block">
-                <span className="text-white text-sm font-medium">Show from</span>
+                <span className="text-white text-sm font-medium">Survey start</span>
                 <p className="text-white/40 text-xs mt-0.5 mb-1.5">
-                  First day parent/child will see this assessment
+                  When parents/students can begin this feedback survey
                 </p>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={showFrom}
                   onChange={(e) => setShowFrom(e.target.value)}
                   required={status === 'PUBLISHED'}
@@ -435,12 +439,12 @@ export default function OnboardingUploadWizard({
               </label>
 
               <label className="block">
-                <span className="text-white text-sm font-medium">Show until</span>
+                <span className="text-white text-sm font-medium">Survey end</span>
                 <p className="text-white/40 text-xs mt-0.5 mb-1.5">
-                  Last day shown — after this, hidden until you set new dates
+                  After this time the survey is hidden until you set a new window
                 </p>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={showUntil}
                   min={showFrom || undefined}
                   onChange={(e) => setShowUntil(e.target.value)}

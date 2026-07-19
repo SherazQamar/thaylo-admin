@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Pencil, Trash2, Eye, MessageCircleQuestion } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Eye, MessageCircleQuestion, ClipboardList } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
 import OnboardingUploadWizard from '../components/OnboardingUploadWizard'
 import OnboardingWalkthroughModal from '../components/OnboardingWalkthroughModal'
+import OnboardingResultsModal from '../components/OnboardingResultsModal'
 import { getApiErrorMessage } from '../lib/auth-api'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import {
@@ -93,9 +94,17 @@ function AudienceBadges({ item }) {
 
 function formatShowWindow(item) {
   if (!item.showFrom || !item.showUntil) return '—'
-  const from = String(item.showFrom).slice(0, 10)
-  const until = String(item.showUntil).slice(0, 10)
-  return `${from} → ${until}`
+  const from = new Date(item.showFrom)
+  const until = new Date(item.showUntil)
+  if (Number.isNaN(from.getTime()) || Number.isNaN(until.getTime())) return '—'
+
+  const opts = {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }
+  return `${from.toLocaleString(undefined, opts)} → ${until.toLocaleString(undefined, opts)}`
 }
 
 function formatEstimatedMinutes(item) {
@@ -161,6 +170,7 @@ export default function OnboardingQA() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [viewItem, setViewItem] = useState(null)
+  const [resultsTarget, setResultsTarget] = useState(null)
   const [formError, setFormError] = useState('')
 
   const listParams = useMemo(
@@ -250,7 +260,7 @@ export default function OnboardingQA() {
               <div>
                 <h2 className="text-white text-3xl font-bold tracking-tight">Onboarding Q&A</h2>
                 <p className="text-white/50 text-sm mt-1">
-                  Manage AI walkthrough content by timing, audience, and sequence.
+                  Manage AI walkthrough content and schedule feedback survey windows.
                 </p>
               </div>
             </div>
@@ -380,7 +390,7 @@ export default function OnboardingQA() {
                     Audience
                   </th>
                   <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
-                    Show window
+                    Survey window
                   </th>
                   <th className="py-3 px-4 text-left text-white/60 text-xs uppercase tracking-wider font-semibold">
                     Order
@@ -435,6 +445,25 @@ export default function OnboardingQA() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setResultsTarget({
+                                id:
+                                  item.studentWalkthroughId ??
+                                  item.parentWalkthroughId ??
+                                  item.id,
+                                title: item.title,
+                                surveyStart: item.showFrom ?? null,
+                                surveyEnd: item.showUntil ?? null,
+                              })
+                            }
+                            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
+                            aria-label="View feedback results"
+                            title="View feedback results"
+                          >
+                            <ClipboardList size={14} />
+                          </button>
                           {item.status !== 'ARCHIVED' && (
                             <button
                               type="button"
@@ -519,6 +548,15 @@ export default function OnboardingQA() {
         open={!!viewItem}
         item={viewItem}
         onClose={() => setViewItem(null)}
+      />
+
+      <OnboardingResultsModal
+        open={!!resultsTarget}
+        walkthroughId={resultsTarget?.id ?? null}
+        title={resultsTarget?.title}
+        surveyStart={resultsTarget?.surveyStart}
+        surveyEnd={resultsTarget?.surveyEnd}
+        onClose={() => setResultsTarget(null)}
       />
     </SuperAdminLayout>
   )

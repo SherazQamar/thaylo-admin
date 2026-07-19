@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   Smile,
@@ -11,6 +12,7 @@ import {
   Menu,
 } from 'lucide-react'
 import logo from '../assets/logo.png'
+import { adminQueryKeys, fetchAdminAlerts } from '../lib/admin-api'
 
 const NAV = [
   {
@@ -48,7 +50,7 @@ const NAV = [
     href: '/alerts',
     matchPaths: ['/alerts'],
     Icon: AlertTriangle,
-    badge: 6,
+    showAlertBadge: true,
   },
   {
     label: 'SETTINGS',
@@ -64,9 +66,24 @@ function isActiveItem(pathname, item) {
     : pathname === item.href
 }
 
+function formatBadgeCount(count) {
+  if (count > 99) return '99+'
+  return String(count)
+}
+
 export default function Sidebar() {
   const { pathname } = useLocation()
   const [collapsed] = useState(false)
+
+  const alertsQuery = useQuery({
+    queryKey: adminQueryKeys.alerts(),
+    queryFn: fetchAdminAlerts,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
+  })
+
+  const alertCount = alertsQuery.data?.totalCount ?? 0
 
   return (
     <>
@@ -111,6 +128,9 @@ export default function Sidebar() {
         <nav className="flex-1 flex flex-col gap-1 px-3">
           {NAV.map((item) => {
             const active = isActiveItem(pathname, item)
+            const badge =
+              item.showAlertBadge && alertCount > 0 ? alertCount : null
+
             return (
               <Link
                 key={item.label}
@@ -135,19 +155,18 @@ export default function Sidebar() {
                     {item.label}
                   </span>
                 )}
-                {item.badge && !collapsed && (
+                {badge != null && !collapsed && (
                   <span className="ml-auto min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#FF6F6F] text-white text-[10px] font-bold flex items-center justify-center">
-                    {item.badge}
+                    {formatBadgeCount(badge)}
                   </span>
                 )}
-                {item.badge && collapsed && (
+                {badge != null && collapsed && (
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#FF6F6F]" />
                 )}
               </Link>
             )
           })}
         </nav>
-
       </aside>
 
       {/* Mobile Header */}
@@ -185,16 +204,24 @@ export default function Sidebar() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#313044] border-t border-white/10 flex items-center justify-around px-2 py-2">
         {NAV.map((item) => {
           const active = isActiveItem(pathname, item)
+          const showDot = item.showAlertBadge && alertCount > 0
           return (
             <Link
               key={item.label}
               to={item.href}
-              aria-label={item.label}
-              className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all ${
+              aria-label={
+                showDot ? `${item.label} (${alertCount} alerts)` : item.label
+              }
+              className={`relative flex items-center justify-center w-12 h-12 rounded-xl transition-all ${
                 active ? 'text-[#00CED1] bg-[#111023]' : 'text-white/40'
               }`}
             >
               <item.Icon size={22} strokeWidth={1.75} />
+              {showDot && (
+                <span className="absolute top-2 right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-[#FF6F6F] text-white text-[8px] font-bold flex items-center justify-center">
+                  {formatBadgeCount(alertCount)}
+                </span>
+              )}
             </Link>
           )
         })}

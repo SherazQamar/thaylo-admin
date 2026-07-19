@@ -118,7 +118,7 @@ export default function AdminSignIn() {
 
   const maskedEmail = resetEmail
     ? resetEmail.replace(/(.{3})(.*)(@.*)/, '$1xxxxx$3')
-    : 'allexxxxx@gmail.com'
+    : 'johnxxxx@gmail.com'
 
   return (
     <div className="h-screen flex flex-col lg:flex-row overflow-hidden bg-[#111023]">
@@ -153,17 +153,15 @@ export default function AdminSignIn() {
             className="text-white text-[36px] font-semibold leading-[1.1] tracking-tight max-w-[400px] mt-6"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            Learn Anytime,
-            <br />
-            Anywhere
+            Education Without Walls
           </h1>
           <p
             className="text-white/70 text-lg mt-3"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            Access high-quality courses on your schedule—at home,
+            A flexible learning experience that keeps students, families,
             <br />
-            on campus, or on the go.
+            and Wayfinders connected—wherever they are.
           </p>
         </div>
 
@@ -406,7 +404,7 @@ export default function AdminSignIn() {
                   type="email"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="Allex@gmail.com"
+                  placeholder="JaneDoe@gmail.com"
                   required
                   className="w-full px-4 py-3 rounded-full bg-[#111023] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40 transition-colors placeholder:text-white/30"
                 />

@@ -1,12 +1,14 @@
-import { useState } from 'react'
-import { Send, ChevronDown, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Send, Search } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
+import { getApiErrorMessage } from '../lib/auth-api'
+import {
+  fetchSuperAdminInsights,
+  superAdminQueryKeys,
+} from '../lib/super-admin-api'
 
 const TABS = ['REPORT', 'ALERT']
-
-/* ============================================================
-   Atoms
-============================================================ */
 
 function PrimaryButton({ children }) {
   return (
@@ -36,9 +38,7 @@ function Header({ title, sub, right }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
       <div className="space-y-2">
-        <h2 className="text-white text-3xl font-bold tracking-tight">
-          {title}
-        </h2>
+        <h2 className="text-white text-3xl font-bold tracking-tight">{title}</h2>
         <p className="text-white/50 text-sm">{sub}</p>
       </div>
       {right && <div className="flex items-center gap-3">{right}</div>}
@@ -46,85 +46,76 @@ function Header({ title, sub, right }) {
   )
 }
 
-function FilterPill({ label }) {
+function FilterSelect({ label, value, onChange, options }) {
   return (
-    <button
-      type="button"
-      className="flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/5 pl-4 pr-3 py-2 text-white/80 text-sm hover:bg-white/[0.1]"
-    >
-      {label}
-      <ChevronDown size={14} className="text-white/60" />
-    </button>
+    <label className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/5 pl-4 pr-3 py-2 text-white/80 text-sm">
+      <span className="text-white/45 text-xs uppercase tracking-wider">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-white text-sm outline-none max-w-[220px]"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} className="bg-[#313044]">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
-function StatCard({ label, value, delta, up }) {
+function StatCard({ label, value, hint }) {
   return (
     <div
       className="rounded-2xl p-4 flex items-center gap-3"
       style={{ backgroundColor: '#313044' }}
+      title={hint}
     >
       <div className="w-12 h-12 rounded-full bg-white/[0.04] border border-white/5 flex items-center justify-center shrink-0">
         <Send size={20} className="text-[#00CED1] -rotate-12" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-white/60 text-xs">{label}</p>
-        <div className="flex items-baseline gap-2 mt-1">
-          <span className="text-white text-xl font-bold leading-none">
-            {value}
-          </span>
-          {delta && (
-            <span
-              className={
-                'text-[11px] font-semibold inline-flex items-center gap-0.5 ' +
-                (up ? 'text-[#60D624]' : 'text-[#FF7B7B]')
-              }
-            >
-              {delta}
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path
-                  d={up ? 'M1 9L9 1M9 1H3M9 1V7' : 'M1 1L9 9M9 9H3M9 9V3'}
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          )}
-        </div>
+        <p className="text-white text-xl font-bold leading-none mt-1">{value}</p>
       </div>
     </div>
   )
 }
 
-/* ============================================================
-   REPORT tab
-============================================================ */
+function ModulePerformance({ families, moduleLabel, studentCount }) {
+  const visible = (families ?? []).filter((f) => f.percent > 0 || f.started > 0)
+  const chartSegments =
+    visible.length > 0
+      ? visible
+      : (families ?? []).map((f) => ({ ...f, percent: 0 }))
 
-function ModulePerformance() {
-  const segments = [
-    { v: 52, color: '#FFC542' },
-    { v: 34, color: '#00CED1' },
-    { v: 14, color: '#FF7B7B' },
-  ]
+  const totalPercent = chartSegments.reduce((sum, f) => sum + (f.percent || 0), 0)
+  const normalized =
+    totalPercent > 0
+      ? chartSegments.map((f) => ({
+          ...f,
+          slice: (f.percent / totalPercent) * 100,
+        }))
+      : chartSegments.map((f) => ({
+          ...f,
+          slice: 100 / Math.max(1, chartSegments.length),
+        }))
+
   const R = 60
   const C = 2 * Math.PI * R
   let offset = 0
 
   return (
-    <div
-      className="rounded-2xl p-6 flex-1"
-      style={{ backgroundColor: '#313044' }}
-    >
+    <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center gap-6">
         <div className="relative w-[180px] h-[180px] shrink-0">
           <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
-            {segments.map((s, i) => {
-              const dash = (s.v / 100) * C
+            {normalized.map((s) => {
+              const dash = (s.slice / 100) * C
               const circle = (
                 <circle
-                  key={i}
+                  key={s.family}
                   cx="80"
                   cy="80"
                   r={R}
@@ -133,6 +124,7 @@ function ModulePerformance() {
                   strokeWidth="18"
                   strokeDasharray={`${dash} ${C - dash}`}
                   strokeDashoffset={-offset}
+                  opacity={totalPercent > 0 || s.started > 0 ? 1 : 0.35}
                 />
               )
               offset += dash
@@ -141,22 +133,34 @@ function ModulePerformance() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-white text-2xl font-bold leading-none">
-              1.2k
+              {studentCount}
             </span>
             <span className="text-white/50 text-[10px] uppercase tracking-wider mt-1">
-              Students
+              Starts
             </span>
           </div>
         </div>
 
-        <div className="flex-1">
-          <h3 className="text-white text-base font-semibold mb-3">
-            Module Performance
-          </h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white text-base font-semibold mb-1">Module Performance</h3>
+          <p className="text-white/40 text-xs mb-3">
+            Skill families · {moduleLabel || '4th ELA'}
+          </p>
           <div className="flex flex-col gap-2.5">
-            <Row dot="#FFC542" label="Inference" value="52%" />
-            <Row dot="#00CED1" label="Theme" value="34%" />
-            <Row dot="#FF7B7B" label="Vocabulary" value="14%" />
+            {(families ?? []).map((f) => (
+              <div key={f.family} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-white/70 text-sm min-w-0">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: f.color }}
+                  />
+                  <span className="truncate">{f.family}</span>
+                </span>
+                <span className="text-white text-sm font-semibold tabular-nums shrink-0">
+                  {f.started > 0 ? `${f.percent}%` : '—'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -164,83 +168,59 @@ function ModulePerformance() {
   )
 }
 
-function Row({ dot, label, value }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-2 text-white/70 text-sm">
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: dot }}
-        />
-        {label}
-      </span>
-      <span className="text-white text-sm font-semibold">{value}</span>
-    </div>
-  )
-}
+function HighestReteachLessons({ lessons }) {
+  const rows = lessons ?? []
+  const maxRate = Math.max(1, ...rows.map((l) => l.reteachRatePercent))
 
-function LearningProgressChart() {
-  const bars = [
-    { l: 'Intro', h: 38, active: false },
-    { l: 'Self', h: 60, active: false },
-    { l: 'Growth', h: 92, active: true },
-    { l: 'Comm', h: 50, active: false },
-    { l: 'World', h: 44, active: false },
-  ]
   return (
-    <div
-      className="rounded-2xl p-6 flex-1"
-      style={{ backgroundColor: '#313044' }}
-    >
+    <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <h3 className="text-white text-base font-semibold">
-        Learning Progress Over Time
+        Lessons Needing Most Reteach
       </h3>
+      <p className="text-white/40 text-xs mt-1 mb-5">
+        Highest reteach rates within the selected module — useful for revision targeting
+      </p>
 
-      <div className="mt-5 flex items-end justify-around h-[180px] gap-3">
-        {bars.map((b) => (
-          <div key={b.l} className="flex-1 flex flex-col items-center gap-2">
-            <div
-              className={
-                'w-full rounded-md ' +
-                (b.active ? 'bg-[#00CED1]' : 'bg-[#1c5a5d]')
-              }
-              style={{ height: `${b.h}%` }}
-            />
-            <span className="text-white/60 text-xs">{b.l}</span>
-          </div>
-        ))}
-      </div>
+      {rows.length === 0 ? (
+        <p className="text-white/40 text-sm py-10 text-center">No lesson activity yet.</p>
+      ) : (
+        <div className="mt-2 flex items-end justify-around h-[180px] gap-2">
+          {rows.map((l) => {
+            const h =
+              l.started === 0
+                ? 8
+                : Math.max(10, Math.round((l.reteachRatePercent / maxRate) * 100))
+            return (
+              <div
+                key={l.lessonKey}
+                className="flex-1 flex flex-col items-center gap-2 min-w-0"
+                title={`Lesson ${l.lessonOrder}: ${l.lessonTitle} — ${l.reteachRatePercent}% reteach (${l.reteachCount}/${l.started})`}
+              >
+                <span className="text-[#00CED1] text-[10px] font-semibold tabular-nums">
+                  {l.started > 0 ? `${Math.round(l.reteachRatePercent)}%` : '0%'}
+                </span>
+                <div
+                  className="w-full rounded-md bg-[#00CED1]"
+                  style={{
+                    height: `${h}%`,
+                    opacity: l.started > 0 ? 1 : 0.25,
+                  }}
+                />
+                <span className="text-white/60 text-[10px] text-center leading-tight truncate w-full">
+                  L{l.lessonOrder}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
-const REPORT_ROWS = [
-  {
-    student: 'Ahmed',
-    module: 'Theme',
-    lesson: 'L1',
-    score: '80%',
-    time: '14 min',
-    reteach: 'No',
-    status: 'Active',
-  },
-  {
-    student: 'Ahmed',
-    module: 'Theme',
-    lesson: 'L1',
-    score: '80%',
-    time: '14 min',
-    reteach: 'Yes',
-    status: 'Active',
-  },
-]
-
-function DetailedTable() {
+function DetailedTable({ rows }) {
   return (
-    <div
-      className="rounded-2xl p-6 mt-5"
-      style={{ backgroundColor: '#313044' }}
-    >
+    <div className="rounded-2xl p-6 mt-5" style={{ backgroundColor: '#313044' }}>
       <h3 className="text-white text-lg font-semibold mb-5">Detailed Table</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[720px]">
@@ -256,9 +236,16 @@ function DetailedTable() {
             </tr>
           </thead>
           <tbody>
-            {REPORT_ROWS.map((r, i) => (
+            {(rows ?? []).length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
+                  No lesson attempts match these filters yet.
+                </td>
+              </tr>
+            )}
+            {(rows ?? []).map((r, i) => (
               <tr
-                key={i}
+                key={`${r.student}-${r.lesson}-${i}`}
                 style={{
                   backgroundColor:
                     i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
@@ -272,7 +259,7 @@ function DetailedTable() {
                 <td
                   className={
                     'py-3.5 px-4 font-semibold ' +
-                    (r.reteach === 'No' ? 'text-[#FF6F6F]' : 'text-[#60D624]')
+                    (r.reteach === 'Yes' ? 'text-[#FFC542]' : 'text-[#60D624]')
                   }
                 >
                   {r.reteach}
@@ -292,6 +279,32 @@ function DetailedTable() {
 }
 
 function ReportView() {
+  const [range, setRange] = useState('all')
+  const [grade, setGrade] = useState('4')
+  const [module, setModule] = useState('ELA')
+  const [lesson, setLesson] = useState('')
+
+  const params = useMemo(
+    () => ({
+      range,
+      grade,
+      module,
+      ...(lesson ? { lesson } : {}),
+    }),
+    [range, grade, module, lesson],
+  )
+
+  const insightsQuery = useQuery({
+    queryKey: superAdminQueryKeys.insights(params),
+    queryFn: () => fetchSuperAdminInsights(params),
+  })
+
+  const data = insightsQuery.data
+  const startedCount = (data?.skillFamilies ?? []).reduce(
+    (sum, f) => sum + (f.started ?? 0),
+    0,
+  )
+
   return (
     <>
       <Header
@@ -305,33 +318,87 @@ function ReportView() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        <StatCard label="Avg Mastery" value="92%" delta="+8%" up />
-        <StatCard label="Completion" value="80%" delta="-2%" />
-        <StatCard label="Avg Time" value="14 min" delta="+11.01%" up />
-        <StatCard label="Reteach Rate" value="Medium" delta="+11.01%" up />
-      </div>
+      {insightsQuery.isLoading && (
+        <p className="text-white/50 text-sm mt-6">Loading insights…</p>
+      )}
+      {insightsQuery.isError && (
+        <p className="text-[#FF7B7B] text-sm mt-6">
+          {getApiErrorMessage(insightsQuery.error)}
+        </p>
+      )}
 
-      <div className="flex flex-wrap gap-3 mt-5">
-        <FilterPill label="Date Range" />
-        <FilterPill label="Grade" />
-        <FilterPill label="Module" />
-        <FilterPill label="Student" />
-      </div>
+      {!insightsQuery.isLoading && !insightsQuery.isError && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            {(data?.stats ?? []).map((s) => (
+              <StatCard
+                key={s.key}
+                label={s.label}
+                value={s.value}
+                hint={s.hint}
+              />
+            ))}
+          </div>
 
-      <div className="flex flex-col lg:flex-row gap-5 mt-5">
-        <ModulePerformance />
-        <LearningProgressChart />
-      </div>
+          <div className="flex flex-wrap gap-3 mt-5">
+            <FilterSelect
+              label="Range"
+              value={range}
+              onChange={setRange}
+              options={[
+                { value: 'all', label: 'All time' },
+                { value: '7d', label: 'Last 7 days' },
+                { value: '30d', label: 'Last 30 days' },
+                { value: '90d', label: 'Last 90 days' },
+              ]}
+            />
+            <FilterSelect
+              label="Grade"
+              value={grade}
+              onChange={setGrade}
+              options={(data?.filters?.grades ?? ['4']).map((g) => ({
+                value: g,
+                label: g === '4' ? '4th' : g,
+              }))}
+            />
+            <FilterSelect
+              label="Module"
+              value={module}
+              onChange={setModule}
+              options={(data?.filters?.modules ?? ['ELA']).map((m) => ({
+                value: m,
+                label: m,
+              }))}
+            />
+            <FilterSelect
+              label="Lesson"
+              value={lesson}
+              onChange={setLesson}
+              options={[
+                { value: '', label: 'All lessons' },
+                ...(data?.filters?.lessons ?? []).map((l) => ({
+                  value: l.key,
+                  label: l.label,
+                })),
+              ]}
+            />
+          </div>
 
-      <DetailedTable />
+          <div className="flex flex-col lg:flex-row gap-5 mt-5">
+            <ModulePerformance
+              families={data?.skillFamilies}
+              moduleLabel={data?.moduleLabel}
+              studentCount={startedCount}
+            />
+            <HighestReteachLessons lessons={data?.highestReteachLessons} />
+          </div>
+
+          <DetailedTable rows={data?.detailRows} />
+        </>
+      )}
     </>
   )
 }
-
-/* ============================================================
-   ALERT tab
-============================================================ */
 
 const SUMMARY = [
   { label: 'High', count: 5, color: '#FF6F6F' },
@@ -376,9 +443,7 @@ function AlertItem({ tag, dotColor }) {
           style={{ backgroundColor: dotColor }}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-semibold leading-tight">
-            {ALERT_ITEM.title}
-          </p>
+          <p className="text-white text-sm font-semibold leading-tight">{ALERT_ITEM.title}</p>
           <p className="text-white/50 text-xs mt-1">{ALERT_ITEM.desc}</p>
           <div className="flex items-center gap-2 mt-2">
             {tag}
@@ -411,16 +476,24 @@ function AlertColumn({ title, dotColor, items, tag }) {
       style={{ backgroundColor: '#313044' }}
     >
       <div className="flex items-center gap-2 mb-1">
-        <span
-          className="w-2.5 h-2.5 rounded-full"
-          style={{ backgroundColor: dotColor }}
-        />
+        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
         <h4 className="text-white text-sm font-semibold">{title}</h4>
       </div>
       {Array.from({ length: items }).map((_, i) => (
         <AlertItem key={i} tag={tag} dotColor={dotColor} />
       ))}
     </div>
+  )
+}
+
+function FilterPill({ label }) {
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/5 pl-4 pr-3 py-2 text-white/80 text-sm hover:bg-white/[0.1]"
+    >
+      {label}
+    </button>
   )
 }
 
@@ -445,7 +518,6 @@ function AlertView() {
         <FilterPill label="Student" />
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
         {SUMMARY.map((s) => (
           <div
@@ -454,10 +526,7 @@ function AlertView() {
             style={{ backgroundColor: '#313044' }}
           >
             <div className="flex items-center gap-2">
-              <span
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: s.color }}
-              />
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
               <span className="text-white text-base">{s.label}</span>
             </div>
             <span className="text-white text-xl font-bold">{s.count}</span>
@@ -465,7 +534,6 @@ function AlertView() {
         ))}
       </div>
 
-      {/* Filter row */}
       <div className="flex flex-wrap items-center gap-3 mt-5">
         <FilterPill label="Type" />
         <FilterPill label="Priority" />
@@ -484,7 +552,6 @@ function AlertView() {
         </div>
       </div>
 
-      {/* Feeds */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
         <AlertColumn
           title="High Alert Feed"
@@ -492,35 +559,18 @@ function AlertView() {
           items={3}
           tag={<CriticalRiskTag />}
         />
-        <AlertColumn
-          title="Medium"
-          dotColor="#FFC542"
-          items={2}
-          tag={<MediumTag />}
-        />
-        <AlertColumn
-          title="Low"
-          dotColor="#00CED1"
-          items={2}
-          tag={<MediumTag />}
-        />
+        <AlertColumn title="Medium" dotColor="#FFC542" items={2} tag={<MediumTag />} />
+        <AlertColumn title="Low" dotColor="#00CED1" items={2} tag={<MediumTag />} />
       </div>
     </>
   )
 }
 
-/* ============================================================
-   Page
-============================================================ */
-
 export default function Insights() {
   const [tab, setTab] = useState('REPORT')
 
   return (
-    <SuperAdminLayout
-      title="Super Admin Dashboard"
-      userSubtitle="Wayfinder"
-    >
+    <SuperAdminLayout title="Insights" userSubtitle="Super Admin">
       <div className="flex items-center gap-8 border-b border-white/5 -mx-6 lg:-mx-10 px-6 lg:px-10 mb-6 overflow-x-auto">
         {TABS.map((t) => {
           const active = tab === t
