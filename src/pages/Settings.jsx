@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { logoutAdmin } from '../lib/auth-session'
 import AdminLayout from '../components/AdminLayout'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
+import AdminAvatarPicker from '../components/AdminAvatarPicker'
 
 const NOTIFICATIONS = [
   {
@@ -187,6 +188,7 @@ export default function Settings() {
       </div>
 
       <div className="flex flex-col gap-5 mt-6">
+        <AdminAvatarPicker />
         <AccountInformation />
         <Notifications />
         <DangerZone onLogout={() => setLogoutOpen(true)} />

@@ -10,7 +10,7 @@ import { useAuthStore } from '../stores/auth.store'
  */
 
 /**
- * @typedef {{ id: number; email: string; name: string | null; role: UserRole; isEmailVerified?: boolean }} AdminUser
+ * @typedef {{ id: number; email: string; name: string | null; role: UserRole; isEmailVerified?: boolean; avatarKey?: string | null; avatarUrl?: string | null }} AdminUser
  */
 
 /**
