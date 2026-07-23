@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import SuperAdminLayout from '../components/SuperAdminLayout'
+import InfoTooltip from '../components/InfoTooltip'
 import { getApiErrorMessage } from '../lib/auth-api'
 import { SUBJECT_COLORS, SUBJECT_MODULES } from '../lib/subject-colors'
 import {
@@ -14,7 +15,7 @@ import {
 const QUICK = [
   { tag: 'Admin', label: 'Create Admin', href: '/super-admin/users' },
   { tag: 'Alerts', label: 'View alerts', href: '/super-admin/insights' },
-  { tag: 'Setting', label: 'View System Setting', href: '/super-admin/settings' },
+  { tag: 'Security', label: 'View Security Logs', href: '/super-admin/security' },
 ]
 
 function formatDelta(changePercent) {
@@ -25,12 +26,15 @@ function formatDelta(changePercent) {
   return { up, label: `${up ? '+' : '-'}${label}` }
 }
 
-function StatCard({ label, value, changePercent }) {
+function StatCard({ label, value, changePercent, hint }) {
   const delta = formatDelta(changePercent)
   return (
     <div className="rounded-2xl p-4" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center justify-between mb-2 gap-2">
-        <span className="text-white/60 text-xs">{label}</span>
+        <span className="text-white/60 text-xs inline-flex items-center gap-1.5 min-w-0">
+          <span className="truncate">{label}</span>
+          {hint ? <InfoTooltip content={hint} align="left" /> : null}
+        </span>
         {delta && (
           <span
             className={
@@ -96,7 +100,13 @@ function PlatformActivityChart({ activity }) {
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-white text-lg font-semibold">Platform Activity</h3>
+          <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+            Platform Activity
+            <InfoTooltip
+              content="Distinct students with a ClassSession started that day, bucketed by curriculum subject (mapped to ELA/Math/Science/Social Studies/Electives). Source: ClassSession + Curriculum for the last 7 days."
+              align="left"
+            />
+          </h3>
           <p className="text-white/40 text-xs mt-1">
             Distinct students per subject per day
           </p>
@@ -178,7 +188,13 @@ function TimeInContentAreaDonut({ segments }) {
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-white text-lg font-semibold">Time in Content Area</h3>
+          <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+            Time in Content Area
+            <InfoTooltip
+              content="Share of ClassSession duration minutes this week by subject. Duration uses completedAt − startedAt (or updatedAt for in-progress). Source: live ClassSession rows."
+              align="left"
+            />
+          </h3>
           <p className="text-white/40 text-xs mt-1">Share of platform time by subject</p>
         </div>
         <span className="text-white/60 text-xs">This Week</span>
@@ -263,7 +279,13 @@ function AlertsTrendsBySubject({ rows }) {
   return (
     <div className="rounded-2xl p-6" style={{ backgroundColor: '#313044' }}>
       <div className="mb-1">
-        <h3 className="text-white text-lg font-semibold">Alerts Trends by Subject</h3>
+        <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+          Alerts Trends by Subject
+          <InfoTooltip
+            content="WayfinderAlert rows created this week that are linked to a ClassSession curriculum subject. Percent is share of those lesson-linked alerts. Alerts without a lesson session are excluded."
+            align="left"
+          />
+        </h3>
         <p className="text-white/40 text-xs mt-1">Lesson-failure alerts this week</p>
       </div>
 
@@ -359,6 +381,7 @@ export default function SuperAdminDashboard() {
                 label={s.label}
                 value={s.displayValue}
                 changePercent={s.changePercent}
+                hint={s.hint}
               />
             ))}
           </div>

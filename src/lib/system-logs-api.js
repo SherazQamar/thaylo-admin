@@ -16,18 +16,27 @@ export const systemLogQueryKeys = {
 }
 
 /**
- * @param {{ page?: number; limit?: number; level?: string; category?: string }} [params]
+ * @param {{ page?: number; limit?: number; level?: string; category?: string; status?: 'open' | 'resolved' | 'all' }} [params]
  */
 export async function fetchSystemLogs(params = {}) {
   const { data } = await api.get('/admin/system-logs', {
     params: {
       page: params.page ?? 1,
       limit: ADMIN_PAGE_SIZE,
+      status: params.status ?? 'open',
       ...(params.level ? { level: params.level } : {}),
       ...(params.category ? { category: params.category } : {}),
     },
   })
   return unwrapPaginated(data)
+}
+
+/**
+ * @param {number} logId
+ */
+export async function resolveSystemLog(logId) {
+  const { data } = await api.patch(`/admin/system-logs/${logId}/resolve`)
+  return data.data
 }
 
 export const SYSTEM_LOG_LEVEL_LABELS = {

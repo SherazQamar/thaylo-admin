@@ -31,6 +31,22 @@ export async function fetchAdminProfile() {
   return data.data
 }
 
+/**
+ * @param {{ name: string; phone?: string; country?: string; timeZone?: string }} payload
+ */
+export async function updateAdminProfile(payload) {
+  const { data } = await api.put('/auth/update', payload)
+  return data.data
+}
+
+/**
+ * @param {{ currentPassword: string; newPassword: string; confirmPassword: string }} payload
+ */
+export async function changeAdminPassword(payload) {
+  const { data } = await api.post('/auth/change-password', payload)
+  return data.data
+}
+
 export async function refreshAdminSession() {
   const profile = await fetchAdminProfile()
   useAuthStore.getState().setUser(profile)
@@ -55,4 +71,26 @@ export function getApiErrorMessage(error) {
 
 export function isAdminPortalRole(role) {
   return role === 'ADMIN' || role === 'SUPER_ADMIN'
+}
+
+/**
+ * @param {string} token
+ * @returns {Promise<{ role: string }>}
+ */
+export async function validateResetToken(token) {
+  const { data } = await api.get('/auth/validate-reset-token', {
+    params: { token },
+    authMode: 'none',
+  })
+  return data.data
+}
+
+/**
+ * @param {{ token: string; newPassword: string; confirmPassword: string }} payload
+ */
+export async function setStaffInvitePassword(payload) {
+  const { data } = await api.post('/auth/staff/set-password', payload, {
+    authMode: 'none',
+  })
+  return data.data
 }

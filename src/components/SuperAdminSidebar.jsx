@@ -8,7 +8,6 @@ import {
   Cpu,
   FileText,
   BookOpen,
-  Settings,
   ShieldCheck,
   LifeBuoy,
   UserCircle2,
@@ -64,12 +63,6 @@ const NAV = [
     href: '/super-admin/billing',
     matchPaths: ['/super-admin/billing'],
     Icon: FileText,
-  },
-  {
-    label: 'SYSTEM SETTING',
-    href: '/super-admin/settings',
-    matchPaths: ['/super-admin/settings'],
-    Icon: Settings,
   },
   {
     label: 'SECURITY & LOGS',

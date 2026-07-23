@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import AdminAuthGuard from './components/AdminAuthGuard'
 import RoleGuard from './components/RoleGuard'
 import AdminSignIn from './pages/AdminSignIn'
+import SetStaffPassword from './pages/SetStaffPassword'
 import AdminDashboard from './pages/AdminDashboard'
 import ParentManagement from './pages/ParentManagement'
 import WayfinderManagement from './pages/WayfinderManagement'
@@ -9,7 +10,6 @@ import StudentManagement from './pages/StudentManagement'
 import StudentDetail from './pages/StudentDetail'
 import Reports from './pages/Reports'
 import AlertsCenter from './pages/AlertsCenter'
-import AlertInsights from './pages/AlertInsights'
 import Settings from './pages/Settings'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import AllUsersManagement from './pages/AllUsersManagement'
@@ -20,7 +20,8 @@ import CurriculumRefinement from './pages/CurriculumRefinement'
 import Insights from './pages/Insights'
 import AiControl from './pages/AiControl'
 import BillingPlans from './pages/BillingPlans'
-import SuperAdminPlaceholder from './pages/SuperAdminPlaceholder'
+import SupportCenter from './pages/SupportCenter'
+import SuperAdminAccount from './pages/SuperAdminAccount'
 import SecurityLogs from './pages/SecurityLogs'
 import NotFound from './pages/NotFound'
 import {
@@ -41,6 +42,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AdminSignIn />} />
+        <Route path="/set-password" element={<SetStaffPassword />} />
 
         {/* Admin portal */}
         <Route
@@ -96,14 +98,6 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
               <AlertsCenter />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/alerts/insights"
-          element={
-            <ProtectedRoute allowedRoles={ADMIN_ONLY_ROLES}>
-              <AlertInsights />
             </ProtectedRoute>
           }
         />
@@ -190,14 +184,6 @@ function App() {
           }
         />
         <Route
-          path="/super-admin/settings"
-          element={
-            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="System Settings" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/super-admin/security"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
@@ -209,7 +195,7 @@ function App() {
           path="/super-admin/support"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="Support" />
+              <SupportCenter />
             </ProtectedRoute>
           }
         />
@@ -217,7 +203,7 @@ function App() {
           path="/super-admin/account"
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
-              <SuperAdminPlaceholder title="Account" />
+              <SuperAdminAccount />
             </ProtectedRoute>
           }
         />
