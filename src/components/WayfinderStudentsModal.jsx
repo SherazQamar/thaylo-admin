@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { X, RefreshCw } from 'lucide-react'
 import ListPagination from './ListPagination'
 import { adminQueryKeys, fetchWayfinderStudents } from '../lib/admin-api'
 
 /**
- * @param {{ open: boolean; wayfinder: { id: number; name: string | null; email: string } | null; onClose: () => void }} props
+ * @param {{
+ *   open: boolean;
+ *   wayfinder: { id: number; name: string | null; email: string } | null;
+ *   onClose: () => void;
+ *   onReassign?: (student: { id: number; userName: string }) => void;
+ * }} props
  */
-export default function WayfinderStudentsModal({ open, wayfinder, onClose }) {
+export default function WayfinderStudentsModal({ open, wayfinder, onClose, onReassign }) {
   const [page, setPage] = useState(1)
 
   const studentsQuery = useQuery({
@@ -71,14 +76,27 @@ export default function WayfinderStudentsModal({ open, wayfinder, onClose }) {
               <div className="min-w-0">
                 <p className="text-white text-sm font-semibold">{student.userName}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  {student.grade ?? 'No grade'} · Parent: {student.parent.name ?? student.parent.email}
+                  {student.grade ?? 'No grade'} · Parent:{' '}
+                  {student.parent.name ?? student.parent.email}
                 </p>
               </div>
-              <p className="text-white/40 text-xs shrink-0">
-                {student.assignedAt
-                  ? new Date(student.assignedAt).toLocaleDateString()
-                  : '—'}
-              </p>
+              <div className="flex items-center gap-3 shrink-0">
+                <p className="text-white/40 text-xs">
+                  {student.assignedAt
+                    ? new Date(student.assignedAt).toLocaleDateString()
+                    : '—'}
+                </p>
+                {onReassign ? (
+                  <button
+                    type="button"
+                    onClick={() => onReassign(student)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#00CED1]/15 text-[#00CED1] text-xs font-semibold px-3 py-1.5 hover:bg-[#00CED1]/25"
+                  >
+                    <RefreshCw size={12} />
+                    Reassign
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

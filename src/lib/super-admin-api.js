@@ -12,6 +12,7 @@ import { DASHBOARD_POLL_INTERVAL_MS } from './admin-api'
  *   value: number;
  *   displayValue: string;
  *   changePercent: number | null;
+ *   hint?: string;
  * }} SuperAdminStat
  */
 

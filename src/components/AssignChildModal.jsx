@@ -5,9 +5,12 @@ import {
   adminQueryKeys,
   assignChildToWayfinder,
   fetchParents,
+  fetchStudents,
   fetchWayfinders,
 } from '../lib/admin-api'
 import { getApiErrorMessage } from '../lib/auth-api'
+
+const SELECT_PAGE_SIZE = 100
 
 function Field({ label, children }) {
   return (
@@ -48,6 +51,7 @@ function SelectField({ value, onChange, placeholder, options, disabled }) {
  * @param {{
  *   open: boolean;
  *   onClose: () => void;
+ *   mode?: 'assign' | 'reassign';
  *   defaultWayfinderId?: number | null;
  *   defaultChildId?: number | null;
  *   onSuccess?: () => void;
@@ -56,28 +60,52 @@ function SelectField({ value, onChange, placeholder, options, disabled }) {
 export default function AssignChildModal({
   open,
   onClose,
+  mode = 'assign',
   defaultWayfinderId = null,
   defaultChildId = null,
   onSuccess,
 }) {
   const queryClient = useQueryClient()
+  const isReassign = mode === 'reassign'
   const [wayfinderId, setWayfinderId] = useState('')
   const [childId, setChildId] = useState('')
   const [error, setError] = useState('')
 
   const wayfindersQuery = useQuery({
-    queryKey: adminQueryKeys.wayfinders({ page: 1 }),
-    queryFn: () => fetchWayfinders({ page: 1 }),
+    queryKey: adminQueryKeys.wayfinders({ page: 1, limit: SELECT_PAGE_SIZE }),
+    queryFn: () => fetchWayfinders({ page: 1, limit: SELECT_PAGE_SIZE }),
     enabled: open,
   })
 
   const parentsQuery = useQuery({
-    queryKey: adminQueryKeys.parents({ page: 1 }),
-    queryFn: () => fetchParents({ page: 1 }),
-    enabled: open,
+    queryKey: adminQueryKeys.parents({ page: 1, limit: SELECT_PAGE_SIZE }),
+    queryFn: () => fetchParents({ page: 1, limit: SELECT_PAGE_SIZE }),
+    enabled: open && !isReassign,
   })
 
-  const unassignedChildren = useMemo(() => {
+  const studentsQuery = useQuery({
+    queryKey: adminQueryKeys.students({
+      page: 1,
+      limit: SELECT_PAGE_SIZE,
+      assignment: 'all',
+    }),
+    queryFn: () =>
+      fetchStudents({ page: 1, limit: SELECT_PAGE_SIZE, assignment: 'all' }),
+    enabled: open && isReassign,
+  })
+
+  const childOptions = useMemo(() => {
+    if (isReassign) {
+      return (studentsQuery.data?.items ?? [])
+        .filter((student) => !!student.wayfinderId)
+        .map((student) => ({
+          value: String(student.id),
+          label: `${student.userName}${student.grade ? ` · ${student.grade}` : ''} → ${
+            student.wayfinder?.name ?? 'Assigned'
+          }`,
+        }))
+    }
+
     const parents = parentsQuery.data?.items ?? []
     return parents.flatMap((parent) =>
       (parent.children ?? [])
@@ -87,13 +115,13 @@ export default function AssignChildModal({
           label: `${child.userName}${child.grade ? ` · ${child.grade}` : ''} (${parent.name ?? parent.email})`,
         })),
     )
-  }, [parentsQuery.data])
+  }, [isReassign, parentsQuery.data, studentsQuery.data])
 
   const wayfinderOptions = useMemo(
     () =>
       (wayfindersQuery.data?.items ?? []).map((w) => ({
         value: String(w.id),
-        label: `${w.name ?? 'Unnamed'} · ${w.childrenCount} students`,
+        label: `${w.name ?? 'Unnamed'} · ${w.childrenCount}/15 students`,
       })),
     [wayfindersQuery.data],
   )
@@ -112,6 +140,7 @@ export default function AssignChildModal({
         queryClient.invalidateQueries({ queryKey: ['admin', 'wayfinders'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'parents'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'students'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] }),
       ])
       onSuccess?.()
       onClose()
@@ -121,7 +150,9 @@ export default function AssignChildModal({
 
   if (!open) return null
 
-  const isLoading = wayfindersQuery.isLoading || parentsQuery.isLoading
+  const isLoading =
+    wayfindersQuery.isLoading ||
+    (isReassign ? studentsQuery.isLoading : parentsQuery.isLoading)
   const canSubmit = wayfinderId && childId && !assignMutation.isPending
 
   function handleSubmit(e) {
@@ -130,6 +161,7 @@ export default function AssignChildModal({
     assignMutation.mutate({
       wayfinderId: Number(wayfinderId),
       childId: Number(childId),
+      reassign: isReassign,
     })
   }
 
@@ -153,9 +185,13 @@ export default function AssignChildModal({
           <X size={14} />
         </button>
 
-        <h3 className="text-white text-xl font-bold">Assign Child to Wayfinder</h3>
+        <h3 className="text-white text-xl font-bold">
+          {isReassign ? 'Reassign Wayfinder' : 'Assign Child to Wayfinder'}
+        </h3>
         <p className="text-white/50 text-sm mt-1">
-          Link an unassigned student to a wayfinder caseload.
+          {isReassign
+            ? 'Move a student to a different wayfinder caseload.'
+            : 'Link an unassigned student to a wayfinder caseload.'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -165,7 +201,7 @@ export default function AssignChildModal({
               onChange={(e) => setWayfinderId(e.target.value)}
               placeholder={isLoading ? 'Loading wayfinders…' : 'Select wayfinder'}
               options={wayfinderOptions}
-              disabled={isLoading || !!defaultWayfinderId}
+              disabled={isLoading || (!!defaultWayfinderId && !isReassign)}
             />
           </Field>
 
@@ -176,12 +212,14 @@ export default function AssignChildModal({
               placeholder={
                 isLoading
                   ? 'Loading students…'
-                  : unassignedChildren.length === 0
-                    ? 'No unassigned students'
+                  : childOptions.length === 0
+                    ? isReassign
+                      ? 'No assigned students'
+                      : 'No unassigned students'
                     : 'Select student'
               }
-              options={unassignedChildren}
-              disabled={isLoading || !!defaultChildId || unassignedChildren.length === 0}
+              options={childOptions}
+              disabled={isLoading || !!defaultChildId || childOptions.length === 0}
             />
           </Field>
 
@@ -200,7 +238,13 @@ export default function AssignChildModal({
               disabled={!canSubmit}
               className="py-3 rounded-full bg-[#00CED1] text-[#111023] text-sm font-semibold hover:bg-[#00B8BB] transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
-              {assignMutation.isPending ? 'Assigning…' : 'Assign'}
+              {assignMutation.isPending
+                ? isReassign
+                  ? 'Reassigning…'
+                  : 'Assigning…'
+                : isReassign
+                  ? 'Reassign'
+                  : 'Assign'}
             </button>
           </div>
         </form>

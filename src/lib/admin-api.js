@@ -42,7 +42,7 @@ function withDefaultPagination(params = {}) {
  */
 
 /**
- * @typedef {{ wayfinderId: number; childId: number }} AssignChildPayload
+ * @typedef {{ wayfinderId: number; childId: number; reassign?: boolean }} AssignChildPayload
  */
 
 /**
@@ -101,7 +101,7 @@ function withDefaultPagination(params = {}) {
  */
 
 /**
- * @typedef {{ page?: number; limit?: number; search?: string; assignment?: 'unassigned' | 'all' }} StudentListParams
+ * @typedef {{ page?: number; limit?: number; search?: string; assignment?: 'unassigned' | 'all'; status?: 'active' | 'inactive' }} StudentListParams
  */
 
 export const adminQueryKeys = {
@@ -192,7 +192,10 @@ export async function fetchAdminReports(params = {}) {
  *   childId: number | null;
  *   childName: string | null;
  *   parentName: string | null;
+ *   parentEmail: string | null;
+ *   wayfinderId: number | null;
  *   wayfinderName: string | null;
+ *   wayfinderEmail: string | null;
  *   lessonAlertId: number | null;
  *   roomId: number | null;
  *   severity: string | null;
@@ -214,6 +217,22 @@ export async function fetchAdminReports(params = {}) {
  */
 export async function fetchAdminAlerts() {
   const { data } = await api.get('/admin/alerts')
+  return data.data
+}
+
+/**
+ * @param {number} alertId
+ */
+export async function resolveAdminAlert(alertId) {
+  const { data } = await api.patch(`/admin/alerts/${alertId}/resolve`)
+  return data.data
+}
+
+/**
+ * @param {number} alertId
+ */
+export async function dismissAdminAlert(alertId) {
+  const { data } = await api.patch(`/admin/alerts/${alertId}/dismiss`)
   return data.data
 }
 
@@ -284,7 +303,11 @@ export async function fetchParents(params = {}) {
  * @param {AssignChildPayload} payload
  */
 export async function assignChildToWayfinder(payload) {
-  const { data } = await api.post('/admin/assign-child', payload)
+  const { data } = await api.post('/admin/assign-child', {
+    wayfinderId: payload.wayfinderId,
+    childId: payload.childId,
+    ...(payload.reassign ? { reassign: true } : {}),
+  })
   return data.data
 }
 
@@ -295,6 +318,7 @@ export async function fetchStudents(params = {}) {
   const { data } = await api.get('/admin/students', {
     params: {
       ...withDefaultPagination(params),
+      status: params.status ?? 'active',
       ...(params.assignment && params.assignment !== 'all'
         ? { assignment: params.assignment }
         : {}),
@@ -308,5 +332,32 @@ export async function fetchStudents(params = {}) {
  */
 export async function fetchStudentById(studentId) {
   const { data } = await api.get(`/admin/students/${studentId}`)
+  return data.data
+}
+
+/**
+ * @param {number} studentId
+ * @param {{ firstName?: string; secondName?: string; userName?: string; grade?: string }} payload
+ */
+export async function updateStudent(studentId, payload) {
+  const { data } = await api.patch(`/admin/students/${studentId}`, payload)
+  return data.data
+}
+
+/**
+ * Soft-delete / archive a student.
+ * @param {number} studentId
+ */
+export async function deleteStudent(studentId) {
+  const { data } = await api.delete(`/admin/students/${studentId}`)
+  return data.data
+}
+
+/**
+ * Restore an archived student.
+ * @param {number} studentId
+ */
+export async function restoreStudent(studentId) {
+  const { data } = await api.post(`/admin/students/${studentId}/restore`)
   return data.data
 }

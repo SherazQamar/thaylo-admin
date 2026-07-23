@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
 import { getApiErrorMessage } from '../lib/auth-api'
 import {
   fetchSystemLogs,
+  resolveSystemLog,
   SYSTEM_LOG_LEVEL_LABELS,
   SYSTEM_LOG_LEVEL_STYLES,
   systemLogQueryKeys,
@@ -22,6 +23,12 @@ const LEVEL_FILTERS = [
 const CATEGORY_FILTERS = [
   { value: '', label: 'All categories' },
   { value: 'CURRICULUM_RUNTIME', label: 'Curriculum AI runtime' },
+]
+
+const STATUS_FILTERS = [
+  { value: 'open', label: 'Open' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'all', label: 'All' },
 ]
 
 function LevelBadge({ level }) {
@@ -126,22 +133,40 @@ function LogDetails({ details }) {
 }
 
 export default function SecurityLogs() {
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [levelFilter, setLevelFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('open')
+  const [message, setMessage] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
 
   const listParams = useMemo(
     () => ({
       page,
+      status: statusFilter,
       ...(levelFilter ? { level: levelFilter } : {}),
       ...(categoryFilter ? { category: categoryFilter } : {}),
     }),
-    [page, levelFilter, categoryFilter],
+    [page, levelFilter, categoryFilter, statusFilter],
   )
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: systemLogQueryKeys.list(listParams),
     queryFn: () => fetchSystemLogs(listParams),
+  })
+
+  const resolveMutation = useMutation({
+    mutationFn: (id) => resolveSystemLog(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: systemLogQueryKeys.all })
+      setMessage('Log marked as resolved.')
+      setErrorMessage(null)
+    },
+    onError: (err) => {
+      setErrorMessage(getApiErrorMessage(err))
+      setMessage(null)
+    },
   })
 
   const items = data?.items ?? []
@@ -153,12 +178,28 @@ export default function SecurityLogs() {
         <div className="rounded-2xl border border-[#00CED1]/30 bg-[#00CED1]/10 px-4 py-3 text-[#00CED1] text-sm flex items-start gap-2">
           <ShieldAlert size={16} className="shrink-0 mt-0.5" />
           <span>
-            Operational errors from curriculum AI generation and other admin workflows appear here.
-            Check this page when publish or generation fails.
+            These are real operational logs (for example curriculum AI generation failures). Use{' '}
+            <strong className="font-semibold">Mark resolved</strong> after you fix the underlying
+            issue. Open logs show by default.
           </span>
         </div>
 
         <div className="flex flex-wrap gap-3">
+          <select
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value)
+              setPage(1)
+            }}
+            className="rounded-xl border border-white/10 bg-[#313044] px-3 py-2 text-sm text-white"
+          >
+            {STATUS_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
           <select
             value={levelFilter}
             onChange={(event) => {
@@ -190,9 +231,16 @@ export default function SecurityLogs() {
           </select>
         </div>
 
-        {isError && (
-          <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-            {getApiErrorMessage(error)}
+        {(message || errorMessage || isError) && (
+          <div
+            className={
+              'rounded-2xl border px-4 py-3 text-sm ' +
+              (errorMessage || isError
+                ? 'border-[#FF7B7B]/30 bg-[#FF7B7B]/10 text-[#FF7B7B]'
+                : 'border-[#00CED1]/30 bg-[#00CED1]/10 text-[#00CED1]')
+            }
+          >
+            {errorMessage ?? (isError ? getApiErrorMessage(error) : message)}
           </div>
         )}
 
@@ -203,32 +251,64 @@ export default function SecurityLogs() {
             <div className="p-8 text-center text-white/50 text-sm">No logs yet.</div>
           ) : (
             <ul className="divide-y divide-white/10">
-              {items.map((item) => (
-                <li key={item.id} className="p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <LevelBadge level={item.level} />
-                        <span className="text-white/40 text-xs">{item.category}</span>
-                        <span className="text-white/30 text-xs">{formatTimestamp(item.createdAt)}</span>
+              {items.map((item) => {
+                const isResolved = !!item.resolvedAt
+                return (
+                  <li key={item.id} className="p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <LevelBadge level={item.level} />
+                          {isResolved ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#60D624]/40 text-[#60D624] bg-[#60D624]/10 px-3 py-1 text-xs font-medium">
+                              <CheckCircle2 size={12} />
+                              Resolved
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-[#FFC542]/40 text-[#FFC542] bg-[#FFC542]/10 px-3 py-1 text-xs font-medium">
+                              Open
+                            </span>
+                          )}
+                          <span className="text-white/40 text-xs">{item.category}</span>
+                          <span className="text-white/30 text-xs">
+                            {formatTimestamp(item.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-white text-sm">{item.message}</p>
+                        {isResolved ? (
+                          <p className="text-white/40 text-xs mt-1">
+                            Resolved {formatTimestamp(item.resolvedAt)}
+                          </p>
+                        ) : null}
+                        {item.curriculumId != null && (
+                          <Link
+                            to={`/super-admin/curriculum/${item.curriculumId}`}
+                            className="inline-block mt-2 text-xs text-[#00CED1] hover:underline"
+                          >
+                            Open curriculum #{item.curriculumId}
+                          </Link>
+                        )}
+                        <LogDetails details={item.details} />
                       </div>
-                      <p className="text-white text-sm">{item.message}</p>
-                      {item.curriculumId != null && (
-                        <Link
-                          to={`/super-admin/curriculum/${item.curriculumId}`}
-                          className="inline-block mt-2 text-xs text-[#00CED1] hover:underline"
-                        >
-                          Open curriculum #{item.curriculumId}
-                        </Link>
-                      )}
-                      <LogDetails details={item.details} />
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.level === 'ERROR' && !isResolved ? (
+                          <AlertTriangle size={18} className="text-[#FF7B7B]" />
+                        ) : null}
+                        {!isResolved ? (
+                          <button
+                            type="button"
+                            onClick={() => resolveMutation.mutate(item.id)}
+                            disabled={resolveMutation.isPending}
+                            className="rounded-full border border-[#00CED1]/40 text-[#00CED1] hover:bg-[#00CED1]/10 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                          >
+                            Mark resolved
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    {item.level === 'ERROR' && (
-                      <AlertTriangle size={18} className="text-[#FF7B7B] shrink-0" />
-                    )}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Cpu, Play, Save, Volume2 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
+import PasswordInput from '../components/PasswordInput'
 import { getApiErrorMessage } from '../lib/auth-api'
 import {
   AI_SETTINGS_FIELD_RANGES,
@@ -176,6 +177,10 @@ function buildFormState(settings) {
       pacing.classDurationMinutes.min,
       pacing.classDurationMinutes.max,
     ),
+    avatarProvider: settings?.avatar?.provider === 'heygen' ? 'heygen' : 'none',
+    heygenAvatarId: settings?.avatar?.heygenAvatarId ?? '',
+    heygenVoiceId: settings?.avatar?.heygenVoiceId ?? '',
+    heygenApiKey: settings?.avatar?.heygenApiKey ?? '',
     onboardingTemperature: clampValue(
       settings?.llm?.onboardingTemperature ?? llm.onboardingTemperature.default,
       llm.onboardingTemperature.min,
@@ -358,6 +363,13 @@ export default function AiControl() {
         pauseMs: form.pauseMs,
         wordMs: form.wordMs,
         classDurationMinutes: form.classDurationMinutes,
+      },
+      avatar: {
+        provider: form.avatarProvider,
+        enabled: form.avatarProvider !== 'none',
+        heygenAvatarId: form.heygenAvatarId.trim(),
+        heygenVoiceId: form.heygenVoiceId.trim(),
+        heygenApiKey: form.heygenApiKey.trim(),
       },
       llm: {
         onboardingTemperature: form.onboardingTemperature,
@@ -888,6 +900,69 @@ export default function AiControl() {
                     : 'Test voice'}
               </button>
             </div>
+          </div>
+        </Card>
+
+        <Card
+          title="Live class avatar (HeyGen LiveAvatar)"
+          description="Talking-avatar engine for classroom narration. Leave off for voice-only."
+        >
+          <div className="space-y-4">
+            <label className="block space-y-1.5">
+              <span className="text-xs uppercase tracking-wide text-white/45">Provider</span>
+              <select
+                value={form.avatarProvider}
+                onChange={(e) => updateField('avatarProvider', e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00CED1]/50"
+              >
+                <option value="none">None (voice only)</option>
+                <option value="heygen">HeyGen (LiveAvatar)</option>
+              </select>
+            </label>
+
+            {form.avatarProvider === 'heygen' ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs uppercase tracking-wide text-white/45">LiveAvatar Avatar ID (UUID)</span>
+                    <input
+                      type="text"
+                      value={form.heygenAvatarId}
+                      onChange={(e) => updateField('heygenAvatarId', e.target.value)}
+                      placeholder="From app.liveavatar.com → Avatars"
+                      className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00CED1]/50"
+                    />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs uppercase tracking-wide text-white/45">Voice ID (optional)</span>
+                    <input
+                      type="text"
+                      value={form.heygenVoiceId}
+                      onChange={(e) => updateField('heygenVoiceId', e.target.value)}
+                      placeholder="Optional LiveAvatar voice UUID"
+                      className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00CED1]/50"
+                    />
+                  </label>
+                </div>
+                <label className="block space-y-1.5">
+                  <span className="text-xs uppercase tracking-wide text-white/45">LiveAvatar API key</span>
+                  <PasswordInput
+                    value={form.heygenApiKey}
+                    onChange={(e) => updateField('heygenApiKey', e.target.value)}
+                    placeholder="From app.liveavatar.com API settings"
+                    autoComplete="off"
+                    toggleLabel="Toggle API key visibility"
+                    className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00CED1]/50"
+                  />
+                </label>
+                <p className="text-xs text-white/45 leading-relaxed">
+                  Use <strong className="text-white/70">LiveAvatar</strong> at{' '}
+                  <code className="text-white/70">app.liveavatar.com</code>.
+                  Create/select an avatar, then paste its UUID and LiveAvatar API key here.
+                  Classic HeyGen Streaming Avatar IDs / Trial tokens will not work.
+                </p>
+              </>
+            ) : null}
           </div>
         </Card>
 

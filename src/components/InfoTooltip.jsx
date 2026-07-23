@@ -2,7 +2,14 @@ import { useId, useState } from 'react'
 import { Info } from 'lucide-react'
 
 /**
- * @param {{ content: string; label?: string; className?: string; align?: 'left' | 'center' | 'right' }} props
+ * Hover/focus info icon used on admin & super-admin stats.
+ *
+ * @param {{
+ *   content: string;
+ *   label?: string;
+ *   className?: string;
+ *   align?: 'left' | 'center' | 'right';
+ * }} props
  */
 export default function InfoTooltip({
   content,
@@ -13,6 +20,8 @@ export default function InfoTooltip({
   const tooltipId = useId()
   const [open, setOpen] = useState(false)
 
+  if (!content?.trim()) return null
+
   const alignClass =
     align === 'left'
       ? 'left-0 translate-x-0'
@@ -21,7 +30,11 @@ export default function InfoTooltip({
         : 'left-1/2 -translate-x-1/2'
 
   return (
-    <span className={`relative inline-flex align-middle ${className}`}>
+    <span
+      className={`relative inline-flex align-middle shrink-0 ${className}`}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
         aria-label={label}
@@ -31,14 +44,18 @@ export default function InfoTooltip({
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen((v) => !v)
+        }}
       >
-        <Info size={15} strokeWidth={2} />
+        <Info size={14} strokeWidth={2} />
       </button>
       {open && (
         <span
           id={tooltipId}
           role="tooltip"
-          className={`absolute top-full z-50 mt-2 w-[min(300px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-[#252338] px-3 py-2.5 text-left text-xs leading-relaxed text-white/80 shadow-xl ${alignClass}`}
+          className={`absolute top-full z-50 mt-2 w-[min(320px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-[#252338] px-3 py-2.5 text-left text-xs leading-relaxed text-white/80 shadow-xl ${alignClass}`}
         >
           {content}
         </span>

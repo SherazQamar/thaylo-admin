@@ -11,11 +11,6 @@ const ADMIN_BREADCRUMBS = {
   '/wayfinders': [ADMIN_ROOT, { href: '/wayfinders', label: 'Wayfinder Management' }],
   '/reports': [ADMIN_ROOT, { href: '/reports', label: 'Reports' }],
   '/alerts': [ADMIN_ROOT, { href: '/alerts', label: 'Alerts Center' }],
-  '/alerts/insights': [
-    ADMIN_ROOT,
-    { href: '/alerts', label: 'Alerts Center' },
-    { href: '/alerts/insights', label: 'Alert Insights' },
-  ],
   '/settings': [ADMIN_ROOT, { href: '/settings', label: 'Settings' }],
 }
 
@@ -48,10 +43,6 @@ const SUPER_ADMIN_BREADCRUMBS = {
   '/super-admin/billing': [
     SUPER_ADMIN_ROOT,
     { href: '/super-admin/billing', label: 'Billing & Plans' },
-  ],
-  '/super-admin/settings': [
-    SUPER_ADMIN_ROOT,
-    { href: '/super-admin/settings', label: 'System Settings' },
   ],
   '/super-admin/security': [
     SUPER_ADMIN_ROOT,
