@@ -85,7 +85,16 @@ export default function StudentDetail() {
               </div>
             </div>
 
-            {!student.wayfinderId && (
+            {student.wayfinderId ? (
+              <button
+                type="button"
+                onClick={() => setAssignOpen(true)}
+                className="self-start inline-flex items-center gap-2 rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-5 py-2.5 transition-colors"
+              >
+                <UserPlus size={16} />
+                Change Wayfinder
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setAssignOpen(true)}
@@ -132,6 +141,14 @@ export default function StudentDetail() {
                         : '—'
                     }
                   />
+                  <button
+                    type="button"
+                    onClick={() => setAssignOpen(true)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#00CED1]/10 text-[#00CED1] text-sm font-semibold px-4 py-2 hover:bg-[#00CED1]/20"
+                  >
+                    <UserPlus size={15} />
+                    Change Wayfinder
+                  </button>
                 </>
               ) : (
                 <div className="space-y-3">
@@ -176,6 +193,7 @@ export default function StudentDetail() {
       <AssignChildModal
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
+        mode={student?.wayfinderId ? 'reassign' : 'assign'}
         defaultChildId={studentId}
         onSuccess={() => studentQuery.refetch()}
       />

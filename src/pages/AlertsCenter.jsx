@@ -1,11 +1,20 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '../components/AdminLayout'
 import AlertDetailDrawer from '../components/AlertDetailDrawer'
-import ChatDrawer from '../components/ChatDrawer'
-import { adminQueryKeys, fetchAdminAlerts } from '../lib/admin-api'
+import {
+  adminQueryKeys,
+  dismissAdminAlert,
+  fetchAdminAlerts,
+  resolveAdminAlert,
+} from '../lib/admin-api'
+import {
+  filterActiveAdminAlerts,
+  markAdminAlertRead,
+  markAdminAlertResolved,
+} from '../lib/admin-alert-read'
 import { getApiErrorMessage } from '../lib/auth-api'
+import { useAuthStore } from '../stores/auth.store'
 
 function formatAlertDate(iso) {
   const date = new Date(iso)
@@ -113,7 +122,6 @@ function AlertCard({ a, onView, onClick }) {
  *   emptyMessage: string;
  *   accent?: boolean;
  *   onOpen: (a: import('../lib/admin-api').AdminAlertItem) => void;
- *   onView: (a: import('../lib/admin-api').AdminAlertItem) => void;
  * }} props
  */
 function AlertSection({
@@ -123,7 +131,6 @@ function AlertSection({
   emptyMessage,
   accent = false,
   onOpen,
-  onView,
 }) {
   return (
     <section
@@ -143,7 +150,7 @@ function AlertSection({
               key={a.id}
               a={a}
               onClick={() => onOpen(a)}
-              onView={() => onView(a)}
+              onView={() => onOpen(a)}
             />
           ))}
         </div>
@@ -153,9 +160,11 @@ function AlertSection({
 }
 
 export default function AlertsCenter() {
-  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const userId = useAuthStore((s) => s.user?.id)
   const [selected, setSelected] = useState(null)
-  const [chatOpen, setChatOpen] = useState(false)
+  const [actionError, setActionError] = useState(null)
+  const [localTick, setLocalTick] = useState(0)
 
   const alertsQuery = useQuery({
     queryKey: adminQueryKeys.alerts(),
@@ -164,51 +173,82 @@ export default function AlertsCenter() {
     refetchOnWindowFocus: true,
   })
 
-  const priorityAlerts = alertsQuery.data?.priorityAlerts ?? []
-  const otherAlerts = alertsQuery.data?.otherAlerts ?? []
+  const activeAlerts = useMemo(() => {
+    void localTick
+    return filterActiveAdminAlerts(alertsQuery.data, userId)
+  }, [alertsQuery.data, userId, localTick])
+
+  const priorityAlerts = activeAlerts.priorityAlerts
+  const otherAlerts = activeAlerts.otherAlerts
+
+  function bumpLocalState() {
+    setLocalTick((n) => n + 1)
+    queryClient.setQueryData(adminQueryKeys.alerts(), (prev) =>
+      prev
+        ? {
+            ...prev,
+            generatedAt: new Date().toISOString(),
+          }
+        : prev,
+    )
+  }
+
+  async function clearAlert(alert, mode) {
+    if (!alert?.id) return
+    setActionError(null)
+
+    if (alert.lessonAlertId) {
+      try {
+        if (mode === 'resolve') {
+          await resolveAdminAlert(alert.lessonAlertId)
+        } else {
+          await dismissAdminAlert(alert.lessonAlertId)
+        }
+      } catch (err) {
+        setActionError(getApiErrorMessage(err))
+        return
+      }
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.alerts() })
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard() })
+    }
+
+    markAdminAlertResolved(userId, alert.id)
+    bumpLocalState()
+    setSelected(null)
+  }
+
+  const clearMutation = useMutation({
+    mutationFn: async ({ alert, mode }) => clearAlert(alert, mode),
+  })
 
   function toDrawerAlert(a) {
     return {
       ...a,
       text: a.message,
       date: formatAlertDate(a.createdAt),
-      type: a.kind === 'PARENT_MESSAGE' ? 'message' : a.kind,
     }
   }
 
   function handleOpen(a) {
-    if (a.kind === 'PARENT_MESSAGE') {
-      setChatOpen(true)
-      return
-    }
-    setSelected(toDrawerAlert(a))
-  }
-
-  function handleView(a) {
-    if (a.kind === 'PARENT_MESSAGE') {
-      setChatOpen(true)
-      return
-    }
-    if (a.kind === 'LESSON_FAILURE') {
-      navigate('/alerts/insights')
-      return
-    }
+    setActionError(null)
+    const newlyRead = markAdminAlertRead(userId, a.id)
+    if (newlyRead) bumpLocalState()
     setSelected(toDrawerAlert(a))
   }
 
   return (
-    <AdminLayout title="Alerts Center" userSubtitle="Super Admin">
+    <AdminLayout title="Alerts Center" userSubtitle="Admin">
       <div className="space-y-2">
         <h2 className="text-white text-3xl font-bold tracking-tight">Alerts Center</h2>
         <p className="text-white/50 text-sm">
           Priority cases first (red flags, SEL, unanswered parent messages 24h+), then remaining
-          alerts by severity.
+          alerts by severity. Open to mark read; Mark Resolved / Dismiss removes it from your queue.
         </p>
       </div>
 
-      {alertsQuery.isError && (
+      {(alertsQuery.isError || actionError) && (
         <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
-          {getApiErrorMessage(alertsQuery.error)}
+          {actionError || getApiErrorMessage(alertsQuery.error)}
         </div>
       )}
 
@@ -223,16 +263,14 @@ export default function AlertsCenter() {
             emptyMessage="No priority alerts right now."
             accent
             onOpen={handleOpen}
-            onView={handleView}
           />
 
           <AlertSection
             title="All Other Alerts"
-            description="Remaining active alerts ordered by priority (High → Medium → Low)."
+            description="Non-red lesson-failure alerts only (orange / yellow severity), ordered High → Medium → Low."
             alerts={otherAlerts}
             emptyMessage="No additional alerts."
             onOpen={handleOpen}
-            onView={handleView}
           />
         </div>
       )}
@@ -240,13 +278,17 @@ export default function AlertsCenter() {
       <AlertDetailDrawer
         open={!!selected}
         alert={selected}
+        busy={clearMutation.isPending}
         onClose={() => setSelected(null)}
-        onMessageParent={() => {
-          setSelected(null)
-          setChatOpen(true)
+        onDismiss={() => {
+          if (!selected) return
+          clearMutation.mutate({ alert: selected, mode: 'dismiss' })
+        }}
+        onResolve={() => {
+          if (!selected) return
+          clearMutation.mutate({ alert: selected, mode: 'resolve' })
         }}
       />
-      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
     </AdminLayout>
   )
 }

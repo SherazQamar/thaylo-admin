@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logoutAdmin } from '../lib/auth-session'
 import AdminLayout from '../components/AdminLayout'
 import LogoutConfirmModal from '../components/LogoutConfirmModal'
+import AdminAvatarPicker from '../components/AdminAvatarPicker'
+import PasswordInput from '../components/PasswordInput'
+import {
+  changeAdminPassword,
+  fetchAdminProfile,
+  getApiErrorMessage,
+  updateAdminProfile,
+} from '../lib/auth-api'
+import { useAuthStore } from '../stores/auth.store'
 
 const NOTIFICATIONS = [
   {
@@ -28,6 +38,33 @@ const NOTIFICATIONS = [
   },
 ]
 
+const DEFAULT_NOTIFICATIONS = {
+  struggling: true,
+  sel: true,
+  parent: true,
+  digest: true,
+}
+
+function notificationStorageKey(userId) {
+  return `thaylo-admin-notification-prefs:${userId}`
+}
+
+function loadNotificationPrefs(userId) {
+  if (!userId) return { ...DEFAULT_NOTIFICATIONS }
+  try {
+    const raw = localStorage.getItem(notificationStorageKey(userId))
+    if (!raw) return { ...DEFAULT_NOTIFICATIONS }
+    return { ...DEFAULT_NOTIFICATIONS, ...JSON.parse(raw) }
+  } catch {
+    return { ...DEFAULT_NOTIFICATIONS }
+  }
+}
+
+function saveNotificationPrefs(userId, prefs) {
+  if (!userId) return
+  localStorage.setItem(notificationStorageKey(userId), JSON.stringify(prefs))
+}
+
 function Card({ title, children }) {
   return (
     <section className="rounded-2xl p-6" style={{ backgroundColor: '#313044' }}>
@@ -40,16 +77,24 @@ function Card({ title, children }) {
 }
 
 function Label({ children }) {
-  return (
-    <span className="block text-white text-sm font-semibold mb-2">{children}</span>
-  )
+  return <span className="block text-white text-sm font-semibold mb-2">{children}</span>
 }
 
 function TextInput({ ...rest }) {
   return (
     <input
       {...rest}
-      className="w-full px-4 py-3.5 rounded-full bg-transparent text-white text-sm outline-none border placeholder:text-white/40 focus:border-[#00CED1]"
+      className="w-full px-4 py-3.5 rounded-full bg-transparent text-white text-sm outline-none border placeholder:text-white/40 focus:border-[#00CED1] disabled:opacity-60"
+      style={{ borderColor: '#00CED1' }}
+    />
+  )
+}
+
+function PasswordField({ ...rest }) {
+  return (
+    <PasswordInput
+      {...rest}
+      className="w-full px-4 py-3.5 rounded-full bg-transparent text-white text-sm outline-none border placeholder:text-white/40 focus:border-[#00CED1] disabled:opacity-60"
       style={{ borderColor: '#00CED1' }}
     />
   )
@@ -97,43 +142,179 @@ function NotificationRow({ title, sub, checked, onChange }) {
   )
 }
 
-function AccountInformation() {
+function AccountInformation({ profile, onSaved }) {
+  const setUser = useAuthStore((s) => s.setUser)
+  const user = useAuthStore((s) => s.user)
+  const [name, setName] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [message, setMessage] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setName(profile?.name ?? '')
+  }, [profile])
+
+  const profileMutation = useMutation({
+    mutationFn: updateAdminProfile,
+    onSuccess: (updated) => {
+      if (user) {
+        setUser({
+          ...user,
+          name: updated.name ?? name,
+          avatarKey: updated.avatarKey ?? user.avatarKey,
+          avatarUrl: updated.avatarUrl ?? user.avatarUrl,
+        })
+      }
+      setMessage('Profile saved.')
+      setError(null)
+      onSaved?.()
+    },
+    onError: (err) => {
+      setMessage(null)
+      setError(getApiErrorMessage(err))
+    },
+  })
+
+  const passwordMutation = useMutation({
+    mutationFn: changeAdminPassword,
+    onSuccess: () => {
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setMessage('Password updated.')
+      setError(null)
+    },
+    onError: (err) => {
+      setMessage(null)
+      setError(getApiErrorMessage(err))
+    },
+  })
+
+  function handleSaveProfile(e) {
+    e.preventDefault()
+    setMessage(null)
+    setError(null)
+    if (!name.trim()) {
+      setError('Full name is required.')
+      return
+    }
+    profileMutation.mutate({ name: name.trim() })
+  }
+
+  function handleSavePassword(e) {
+    e.preventDefault()
+    setMessage(null)
+    setError(null)
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Fill all password fields to change your password.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('New password and confirmation do not match.')
+      return
+    }
+    passwordMutation.mutate({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    })
+  }
+
+  const busy = profileMutation.isPending || passwordMutation.isPending
+
   return (
     <Card title="Account Information">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>Full Name</Label>
-          <TextInput type="text" placeholder="Full Name" />
-        </div>
-        <div>
-          <Label>Email Address</Label>
-          <TextInput type="email" placeholder="JaneDoe@gmail.com" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-end mt-4">
-        <div>
-          <Label>Password</Label>
-          <TextInput type="password" placeholder="••••••••••••••" />
+      <form onSubmit={handleSaveProfile} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Full Name</Label>
+            <TextInput
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full Name"
+            />
+          </div>
+          <div>
+            <Label>Email Address</Label>
+            <TextInput type="email" value={profile?.email ?? ''} disabled readOnly />
+          </div>
         </div>
         <button
-          type="button"
-          className="rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-6 py-3 transition-colors"
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-6 py-3 transition-colors disabled:opacity-50"
         >
-          Save Changes
+          {profileMutation.isPending ? 'Saving…' : 'Save Profile'}
         </button>
-      </div>
+      </form>
+
+      <form onSubmit={handleSavePassword} className="mt-6 space-y-4 border-t border-white/10 pt-5">
+        <p className="text-white/60 text-xs">Change password</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <Label>Current Password</Label>
+            <PasswordField
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="••••••••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <Label>New Password</Label>
+            <PasswordField
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <Label>Confirm Password</Label>
+            <PasswordField
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••••••••"
+              autoComplete="new-password"
+              toggleLabel="Toggle confirm password visibility"
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-white/[0.08] hover:bg-white/[0.12] text-white text-sm font-semibold px-6 py-3 transition-colors disabled:opacity-50"
+        >
+          {passwordMutation.isPending ? 'Updating…' : 'Update Password'}
+        </button>
+      </form>
+
+      {message ? <p className="mt-3 text-[#00CED1] text-xs">{message}</p> : null}
+      {error ? <p className="mt-3 text-[#FF6F6F] text-xs">{error}</p> : null}
     </Card>
   )
 }
 
-function Notifications() {
-  const [state, setState] = useState({
-    struggling: true,
-    sel: true,
-    parent: true,
-    digest: true,
-  })
+function Notifications({ userId }) {
+  const [state, setState] = useState(() => loadNotificationPrefs(userId))
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    setState(loadNotificationPrefs(userId))
+  }, [userId])
+
+  function updatePref(key, value) {
+    setState((prev) => {
+      const next = { ...prev, [key]: value }
+      saveNotificationPrefs(userId, next)
+      setSaved(true)
+      return next
+    })
+  }
+
   return (
     <Card title="Notifications">
       <div className="flex flex-col divide-y divide-white/5">
@@ -142,11 +323,16 @@ function Notifications() {
             key={n.key}
             title={n.title}
             sub={n.sub}
-            checked={state[n.key]}
-            onChange={(v) => setState({ ...state, [n.key]: v })}
+            checked={!!state[n.key]}
+            onChange={(v) => updatePref(n.key, v)}
           />
         ))}
       </div>
+      {saved ? (
+        <p className="mt-3 text-[#00CED1] text-xs">
+          Preferences saved on this device for your admin account.
+        </p>
+      ) : null}
     </Card>
   )
 }
@@ -157,9 +343,7 @@ function DangerZone({ onLogout }) {
       <div className="flex items-center justify-between py-3">
         <div>
           <p className="text-white text-sm font-semibold">Log Out</p>
-          <p className="text-white/50 text-xs mt-1">
-            Sign out of your admin account
-          </p>
+          <p className="text-white/50 text-xs mt-1">Sign out of your admin account</p>
         </div>
         <button
           type="button"
@@ -175,7 +359,18 @@ function DangerZone({ onLogout }) {
 
 export default function Settings() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
   const [logoutOpen, setLogoutOpen] = useState(false)
+
+  const profileQuery = useQuery({
+    queryKey: ['admin', 'profile'],
+    queryFn: fetchAdminProfile,
+  })
+
+  const profile = useMemo(
+    () => profileQuery.data ?? user ?? null,
+    [profileQuery.data, user],
+  )
 
   return (
     <AdminLayout title="Settings" userSubtitle="Admin">
@@ -186,9 +381,19 @@ export default function Settings() {
         </p>
       </div>
 
+      {profileQuery.isError ? (
+        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
+          {getApiErrorMessage(profileQuery.error)}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-5 mt-6">
-        <AccountInformation />
-        <Notifications />
+        <AdminAvatarPicker />
+        <AccountInformation
+          profile={profile}
+          onSaved={() => profileQuery.refetch()}
+        />
+        <Notifications userId={profile?.id ?? user?.id} />
         <DangerZone onLogout={() => setLogoutOpen(true)} />
       </div>
 

@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Send, Search } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
+import InfoTooltip from '../components/InfoTooltip'
 import { getApiErrorMessage } from '../lib/auth-api'
+import { adminQueryKeys, fetchAdminAlerts } from '../lib/admin-api'
 import {
   fetchSuperAdminInsights,
   superAdminQueryKeys,
@@ -10,10 +12,11 @@ import {
 
 const TABS = ['REPORT', 'ALERT']
 
-function PrimaryButton({ children }) {
+function PrimaryButton({ children, onClick, type = 'button' }) {
   return (
     <button
-      type="button"
+      type={type}
+      onClick={onClick}
       className="bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-6 py-2.5"
       style={{ borderRadius: '10px' }}
     >
@@ -22,10 +25,11 @@ function PrimaryButton({ children }) {
   )
 }
 
-function OutlineButton({ children }) {
+function OutlineButton({ children, onClick, type = 'button' }) {
   return (
     <button
-      type="button"
+      type={type}
+      onClick={onClick}
       className="border border-[#00CED1] text-[#00CED1] hover:bg-[#00CED1]/10 text-sm font-semibold px-6 py-2.5"
       style={{ borderRadius: '10px' }}
     >
@@ -70,13 +74,15 @@ function StatCard({ label, value, hint }) {
     <div
       className="rounded-2xl p-4 flex items-center gap-3"
       style={{ backgroundColor: '#313044' }}
-      title={hint}
     >
       <div className="w-12 h-12 rounded-full bg-white/[0.04] border border-white/5 flex items-center justify-center shrink-0">
         <Send size={20} className="text-[#00CED1] -rotate-12" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white/60 text-xs">{label}</p>
+        <p className="text-white/60 text-xs inline-flex items-center gap-1.5">
+          <span>{label}</span>
+          {hint ? <InfoTooltip content={hint} align="left" /> : null}
+        </p>
         <p className="text-white text-xl font-bold leading-none mt-1">{value}</p>
       </div>
     </div>
@@ -142,7 +148,13 @@ function ModulePerformance({ families, moduleLabel, studentCount }) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-white text-base font-semibold mb-1">Module Performance</h3>
+          <h3 className="text-white text-base font-semibold mb-1 inline-flex items-center gap-2">
+            Module Performance
+            <InfoTooltip
+              content="Skill-family mix from ClassSession attempts in the selected filters, mapped via 4th-grade ELA skill families. Percent is share of started attempts in each family."
+              align="left"
+            />
+          </h3>
           <p className="text-white/40 text-xs mb-3">
             Skill families · {moduleLabel || '4th ELA'}
           </p>
@@ -174,8 +186,12 @@ function HighestReteachLessons({ lessons }) {
 
   return (
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
-      <h3 className="text-white text-base font-semibold">
+      <h3 className="text-white text-base font-semibold inline-flex items-center gap-2">
         Lessons Needing Most Reteach
+        <InfoTooltip
+          content="Lessons with the highest reteach rate in the filter: retake attempts ÷ started attempts per lessonKey from ClassSession."
+          align="left"
+        />
       </h3>
       <p className="text-white/40 text-xs mt-1 mb-5">
         Highest reteach rates within the selected module — useful for revision targeting
@@ -305,6 +321,46 @@ function ReportView() {
     0,
   )
 
+  function exportCsv() {
+    const rows = data?.lessonDetails ?? data?.highestReteachLessons ?? []
+    if (!rows.length) return
+    const headers = Object.keys(rows[0])
+    const csv = [
+      headers.join(','),
+      ...rows.map((row) =>
+        headers
+          .map((h) => `"${String(row[h] ?? '').replace(/"/g, '""')}"`)
+          .join(','),
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `thaylo-insights-${range}-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportPdf() {
+    const win = window.open('', '_blank')
+    if (!win) return
+    const statsHtml = (data?.stats ?? [])
+      .map((s) => `<li><strong>${s.label}:</strong> ${s.value}</li>`)
+      .join('')
+    win.document.write(`<!doctype html><html><head><title>Thaylo Insights</title>
+      <style>body{font-family:Inter,Arial,sans-serif;padding:24px;color:#111}
+      h1{font-size:20px} li{margin:6px 0}</style></head><body>
+      <h1>Thaylo Insights Report</h1>
+      <p>Range: ${range} · Grade: ${grade} · Module: ${module}</p>
+      <ul>${statsHtml}</ul>
+      <p>Generated ${new Date().toLocaleString()}</p>
+      </body></html>`)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
   return (
     <>
       <Header
@@ -312,8 +368,8 @@ function ReportView() {
         sub="Track student performance, learning trends, and outcomes"
         right={
           <>
-            <PrimaryButton>Export PDF</PrimaryButton>
-            <OutlineButton>Download CSV</OutlineButton>
+            <PrimaryButton onClick={exportPdf}>Export PDF</PrimaryButton>
+            <OutlineButton onClick={exportCsv}>Download CSV</OutlineButton>
           </>
         }
       />
@@ -400,126 +456,116 @@ function ReportView() {
   )
 }
 
-const SUMMARY = [
-  { label: 'High', count: 5, color: '#FF6F6F' },
-  { label: 'Medium', count: 12, color: '#FFC542' },
-  { label: 'Low', count: 28, color: '#00CED1' },
-]
-
-const ALERT_ITEM = {
-  title: 'Fatima Khan showing frustration',
-  desc: '"3 consecutive SEL amber signals detected"',
-  time: 'Time: 10 min ago',
-}
-
-function CriticalRiskTag() {
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded text-[10px] font-semibold px-2 py-0.5"
-      style={{ backgroundColor: '#FF6F6F', color: '#FFFFFF' }}
-    >
-      Critical Risk
-    </span>
-  )
-}
-
-function MediumTag() {
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded text-[10px] font-semibold px-2 py-0.5"
-      style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#FFFFFF' }}
-    >
-      Medium
-    </span>
-  )
-}
-
-function AlertItem({ tag, dotColor }) {
-  return (
-    <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-      <div className="flex items-start gap-2">
-        <span
-          className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-          style={{ backgroundColor: dotColor }}
-        />
-        <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-semibold leading-tight">{ALERT_ITEM.title}</p>
-          <p className="text-white/50 text-xs mt-1">{ALERT_ITEM.desc}</p>
-          <div className="flex items-center gap-2 mt-2">
-            {tag}
-            <span className="text-white/40 text-[11px]">{ALERT_ITEM.time}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              type="button"
-              className="bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-xs font-semibold px-3 py-1.5 rounded-md"
-            >
-              Notify Parent
-            </button>
-            <button
-              type="button"
-              className="border border-[#00CED1] text-[#00CED1] hover:bg-[#00CED1]/10 text-xs font-semibold px-3 py-1.5 rounded-md"
-            >
-              View
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AlertColumn({ title, dotColor, items, tag }) {
-  return (
-    <div
-      className="rounded-2xl p-5 flex flex-col gap-3"
-      style={{ backgroundColor: '#313044' }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: dotColor }} />
-        <h4 className="text-white text-sm font-semibold">{title}</h4>
-      </div>
-      {Array.from({ length: items }).map((_, i) => (
-        <AlertItem key={i} tag={tag} dotColor={dotColor} />
-      ))}
-    </div>
-  )
-}
-
-function FilterPill({ label }) {
-  return (
-    <button
-      type="button"
-      className="flex items-center gap-2 rounded-full bg-white/[0.06] border border-white/5 pl-4 pr-3 py-2 text-white/80 text-sm hover:bg-white/[0.1]"
-    >
-      {label}
-    </button>
-  )
-}
-
 function AlertView() {
+  const [search, setSearch] = useState('')
+  const alertsQuery = useQuery({
+    queryKey: adminQueryKeys.alerts(),
+    queryFn: fetchAdminAlerts,
+    refetchInterval: 30_000,
+  })
+
+  const allAlerts = useMemo(() => {
+    const rows = [
+      ...(alertsQuery.data?.priorityAlerts ?? []),
+      ...(alertsQuery.data?.otherAlerts ?? []),
+    ]
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((a) =>
+      `${a.title} ${a.message} ${a.childName ?? ''} ${a.parentName ?? ''}`
+        .toLowerCase()
+        .includes(q),
+    )
+  }, [alertsQuery.data, search])
+
+  const byPriority = {
+    High: allAlerts.filter((a) => a.priority === 'High'),
+    Medium: allAlerts.filter((a) => a.priority === 'Medium'),
+    Low: allAlerts.filter((a) => a.priority === 'Low'),
+  }
+
+  const summary = [
+    {
+      label: 'High',
+      count: byPriority.High.length,
+      color: '#FF6F6F',
+      hint: 'Alerts mapped to High priority from GET /admin/alerts (priorityAlerts + otherAlerts). Includes red lesson failures and other high-priority signals.',
+    },
+    {
+      label: 'Medium',
+      count: byPriority.Medium.length,
+      color: '#FFC542',
+      hint: 'Alerts with Medium priority from the live admin alert feed (lesson / parent / SEL signals).',
+    },
+    {
+      label: 'Low',
+      count: byPriority.Low.length,
+      color: '#00CED1',
+      hint: 'Alerts with Low priority from the live admin alert feed.',
+    },
+  ]
+
+  function exportAlertsCsv() {
+    if (!allAlerts.length) return
+    const headers = ['priority', 'kind', 'title', 'message', 'childName', 'createdAt']
+    const csv = [
+      headers.join(','),
+      ...allAlerts.map((a) =>
+        headers.map((h) => `"${String(a[h] ?? '').replace(/"/g, '""')}"`).join(','),
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `thaylo-insight-alerts-${Date.now()}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportAlertsPdf() {
+    if (!allAlerts.length) return
+    const rows = allAlerts
+      .map(
+        (a) =>
+          `<tr><td>${a.priority ?? ''}</td><td>${a.title ?? ''}</td><td>${a.childName ?? ''}</td><td>${a.message ?? ''}</td></tr>`,
+      )
+      .join('')
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(`<!doctype html><html><head><title>Thaylo Alert Insights</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px;text-align:left;font-size:12px}h1{font-size:18px}</style></head><body>
+      <h1>Thaylo Alert Insights</h1>
+      <p>Generated ${new Date().toLocaleString()}</p>
+      <table><thead><tr><th>Priority</th><th>Title</th><th>Child</th><th>Message</th></tr></thead><tbody>${rows}</tbody></table>
+      </body></html>`)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
   return (
     <>
       <Header
         title="Alert Center"
-        sub="Monitor critical student signals and system events"
+        sub="Live student signals from the platform alert feed"
         right={
-          <>
-            <PrimaryButton>Mark all Read</PrimaryButton>
-            <OutlineButton>Setting</OutlineButton>
-          </>
+          <div className="flex flex-wrap gap-2">
+            <PrimaryButton onClick={exportAlertsPdf}>Export PDF</PrimaryButton>
+            <OutlineButton onClick={exportAlertsCsv}>Export CSV</OutlineButton>
+          </div>
         }
       />
 
-      <div className="flex flex-wrap gap-3 mt-6">
-        <FilterPill label="Date Range" />
-        <FilterPill label="Grade" />
-        <FilterPill label="Module" />
-        <FilterPill label="Student" />
-      </div>
+      {alertsQuery.isLoading ? (
+        <p className="text-white/50 text-sm mt-6">Loading alerts…</p>
+      ) : null}
+      {alertsQuery.isError ? (
+        <p className="text-[#FF6F6F] text-sm mt-6">{getApiErrorMessage(alertsQuery.error)}</p>
+      ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
-        {SUMMARY.map((s) => (
+        {summary.map((s) => (
           <div
             key={s.label}
             className="rounded-2xl p-5 flex items-center justify-between"
@@ -527,40 +573,62 @@ function AlertView() {
           >
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-              <span className="text-white text-base">{s.label}</span>
+              <span className="text-white text-base inline-flex items-center gap-1.5">
+                {s.label}
+                <InfoTooltip content={s.hint} align="left" />
+              </span>
             </div>
             <span className="text-white text-xl font-bold">{s.count}</span>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mt-5">
-        <FilterPill label="Type" />
-        <FilterPill label="Priority" />
-        <FilterPill label="Status" />
-        <FilterPill label="Date" />
-        <div className="relative ml-auto">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-          />
-          <input
-            type="search"
-            placeholder="Search User"
-            className="w-[260px] pl-8 pr-4 py-2 rounded-full bg-white/[0.06] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40 placeholder:text-white/40"
-          />
-        </div>
+      <div className="relative mt-5 max-w-sm ml-auto">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search alerts"
+          className="w-full pl-8 pr-4 py-2 rounded-full bg-white/[0.06] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
-        <AlertColumn
-          title="High Alert Feed"
-          dotColor="#FF6F6F"
-          items={3}
-          tag={<CriticalRiskTag />}
-        />
-        <AlertColumn title="Medium" dotColor="#FFC542" items={2} tag={<MediumTag />} />
-        <AlertColumn title="Low" dotColor="#00CED1" items={2} tag={<MediumTag />} />
+        {(['High', 'Medium', 'Low']).map((priority) => {
+          const color =
+            priority === 'High' ? '#FF6F6F' : priority === 'Medium' ? '#FFC542' : '#00CED1'
+          const items = byPriority[priority]
+          return (
+            <div
+              key={priority}
+              className="rounded-2xl p-5 flex flex-col gap-3"
+              style={{ backgroundColor: '#313044' }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                <h4 className="text-white text-sm font-semibold">{priority} Alert Feed</h4>
+              </div>
+              {items.length === 0 ? (
+                <p className="text-white/40 text-xs py-4 text-center">No {priority.toLowerCase()} alerts.</p>
+              ) : (
+                items.map((a) => (
+                  <div
+                    key={a.id}
+                    className="rounded-xl p-3"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+                  >
+                    <p className="text-white text-sm font-semibold leading-tight">{a.title}</p>
+                    <p className="text-white/50 text-xs mt-1">{a.message}</p>
+                    <p className="text-white/35 text-[11px] mt-2">
+                      {a.kind} · {new Date(a.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )
+        })}
       </div>
     </>
   )

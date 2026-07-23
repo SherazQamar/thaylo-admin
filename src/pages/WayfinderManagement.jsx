@@ -241,9 +241,11 @@ export default function WayfinderManagement() {
   const onlineOnly = searchParams.get('status') === 'active'
   const [addOpen, setAddOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
+  const [assignMode, setAssignMode] = useState('assign')
   const [studentsOpen, setStudentsOpen] = useState(false)
   const [selectedWayfinder, setSelectedWayfinder] = useState(null)
   const [assignWayfinderId, setAssignWayfinderId] = useState(null)
+  const [assignChildId, setAssignChildId] = useState(null)
   const [search, setSearch] = useState('')
   const [unassignedPage, setUnassignedPage] = useState(1)
   const [directoryPage, setDirectoryPage] = useState(1)
@@ -332,7 +334,9 @@ export default function WayfinderManagement() {
       setStudentsOpen(true)
     },
     onAssign: (w) => {
+      setAssignMode('assign')
       setAssignWayfinderId(w.id)
+      setAssignChildId(null)
       setAssignOpen(true)
     },
     onResendInvite: (w) => {
@@ -392,13 +396,28 @@ export default function WayfinderManagement() {
           <button
             type="button"
             onClick={() => {
+              setAssignMode('assign')
               setAssignWayfinderId(null)
+              setAssignChildId(null)
               setAssignOpen(true)
             }}
             className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors"
           >
             <Users size={16} />
             Assign Child
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAssignMode('reassign')
+              setAssignWayfinderId(null)
+              setAssignChildId(null)
+              setAssignOpen(true)
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors"
+          >
+            <Users size={16} />
+            Reassign
           </button>
           <button
             type="button"
@@ -511,8 +530,14 @@ export default function WayfinderManagement() {
 
       <AssignChildModal
         open={assignOpen}
-        onClose={() => setAssignOpen(false)}
-        defaultWayfinderId={assignWayfinderId}
+        onClose={() => {
+          setAssignOpen(false)
+          setAssignChildId(null)
+          setAssignMode('assign')
+        }}
+        mode={assignMode}
+        defaultWayfinderId={assignMode === 'assign' ? assignWayfinderId : null}
+        defaultChildId={assignChildId}
       />
 
       <WayfinderStudentsModal
@@ -521,6 +546,14 @@ export default function WayfinderManagement() {
         onClose={() => {
           setStudentsOpen(false)
           setSelectedWayfinder(null)
+        }}
+        onReassign={(student) => {
+          setStudentsOpen(false)
+          setSelectedWayfinder(null)
+          setAssignMode('reassign')
+          setAssignChildId(student.id)
+          setAssignWayfinderId(null)
+          setAssignOpen(true)
         }}
       />
     </AdminLayout>

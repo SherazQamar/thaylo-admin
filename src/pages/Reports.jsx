@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Send, ChevronDown, Search, Flag, Info } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
+import InfoTooltip from '../components/InfoTooltip'
 import { adminQueryKeys, fetchAdminReports } from '../lib/admin-api'
 import { getApiErrorMessage } from '../lib/auth-api'
 
@@ -49,7 +50,7 @@ function initialsFromName(name) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
-function StatCard({ label, value, changePercent }) {
+function StatCard({ label, value, changePercent, hint }) {
   const up = (changePercent ?? 0) >= 0
   return (
     <div
@@ -60,8 +61,12 @@ function StatCard({ label, value, changePercent }) {
         <Send size={22} className="text-[#00CED1] -rotate-12" />
       </div>
       <div className="min-w-0 flex flex-col gap-0.5">
-        <p className="text-white font-medium" style={{ fontSize: '11px', lineHeight: '16px' }}>
-          {label}
+        <p
+          className="text-white font-medium inline-flex items-center gap-1.5"
+          style={{ fontSize: '11px', lineHeight: '16px' }}
+        >
+          <span className="truncate">{label}</span>
+          {hint ? <InfoTooltip content={hint} align="left" /> : null}
         </p>
         <div className="flex items-baseline gap-2 min-w-0">
           <span className="text-white text-2xl font-semibold leading-none">{value}</span>
@@ -132,7 +137,13 @@ function LearningActivityChart({ points }) {
   return (
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-white text-lg font-semibold">Learning Activity Trend</h3>
+        <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+          Learning Activity Trend
+          <InfoTooltip
+            content="Daily count of COMPLETED ClassSession rows in the selected report range."
+            align="left"
+          />
+        </h3>
         <span className="flex items-center gap-2 text-[#00CED1] text-xs">
           <span className="w-2 h-2 rounded-full bg-[#00CED1]" />
           Completed Lessons
@@ -202,7 +213,13 @@ function SupportIndicators({ indicators }) {
       className="rounded-2xl p-6 w-full lg:w-[360px] shrink-0"
       style={{ backgroundColor: '#313044' }}
     >
-      <h3 className="text-white text-lg font-semibold">Support Indicators</h3>
+      <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+        Support Indicators
+        <InfoTooltip
+          content="Academic / engagement / social-emotional flag counts derived from lesson alerts and related signals in the selected range. Bars are relative within this panel."
+          align="left"
+        />
+      </h3>
       <p className="text-white/40 text-xs mt-1">
         Flags indicate support needs, not failure. Scoped to{' '}
         <span className="text-[#00CED1]">{indicators?.rangeLabel ?? 'selected range'}</span>.
@@ -247,8 +264,12 @@ function TimePerModule({ modules }) {
 
   return (
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
-      <h3 className="text-white text-lg font-semibold">
+      <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
         Average Time Spent per Module This Week
+        <InfoTooltip
+          content="Average ClassSession duration minutes this calendar week, grouped by curriculum subject (ELA/Math/etc.)."
+          align="left"
+        />
       </h3>
       <p className="text-white/40 text-xs mt-1">
         Average session minutes by subject for the current week
@@ -316,7 +337,13 @@ function MasteryProfile({ profile }) {
       className="rounded-2xl p-6 w-full lg:w-[420px] shrink-0"
       style={{ backgroundColor: '#313044' }}
     >
-      <h3 className="text-white text-lg font-semibold">Mastery Profile</h3>
+      <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+        Mastery Profile
+        <InfoTooltip
+          content="Breakdown of COMPLETED ClassSession outcomes in the range by attempt number (1st / 2nd / 3rd pass) vs support-needed (not passed)."
+          align="left"
+        />
+      </h3>
       <p className="text-white/40 text-xs mt-1">Completed lesson outcomes in the selected range</p>
 
       <div className="mt-5 flex items-center gap-6">
@@ -492,6 +519,7 @@ function StatusPill({ status }) {
 
 export default function Reports() {
   const [range, setRange] = useState('30d')
+  const [exportMessage, setExportMessage] = useState(null)
 
   const reportsQuery = useQuery({
     queryKey: adminQueryKeys.reports({ range }),
@@ -500,8 +528,51 @@ export default function Reports() {
 
   const data = reportsQuery.data
 
+  function handleExport() {
+    if (!data?.students?.length) {
+      setExportMessage('No student rows to export for this range.')
+      return
+    }
+
+    const headers = [
+      'Student',
+      'Grade',
+      'Wayfinder',
+      'Status',
+      'Last Active',
+      'Flags',
+    ]
+    const rows = data.students.map((s) => [
+      s.name,
+      s.grade ?? '',
+      s.wayfinderName ?? '',
+      s.status,
+      s.lastActiveAt ?? '',
+      String(s.flags ?? 0),
+    ])
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
+          .join(','),
+      )
+      .join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `thaylo-admin-reports-${data.rangeKey}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    setExportMessage(`Exported ${data.students.length} students (${data.rangeLabel}).`)
+  }
+
   return (
-    <AdminLayout title="Reports" userSubtitle="Super Admin">
+    <AdminLayout title="Reports" userSubtitle="Admin">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
           <h2 className="text-white text-3xl font-bold tracking-tight">Reports</h2>
@@ -511,11 +582,17 @@ export default function Reports() {
         </div>
         <button
           type="button"
-          className="self-start sm:self-auto inline-flex items-center gap-2 rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-7 py-2.5 transition-colors"
+          onClick={handleExport}
+          disabled={reportsQuery.isLoading || !data}
+          className="self-start sm:self-auto inline-flex items-center gap-2 rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-7 py-2.5 transition-colors disabled:opacity-50"
         >
-          Export
+          Export CSV
         </button>
       </div>
+
+      {exportMessage ? (
+        <p className="mt-3 text-[#00CED1] text-xs">{exportMessage}</p>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3 mt-6">
         <DateRangeFilter value={range} onChange={setRange} />
@@ -532,10 +609,10 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-5">
         {(data?.stats ?? [
-          { label: 'Active Students', value: '—', changePercent: null },
-          { label: 'Lessons Completed', value: '—', changePercent: null },
-          { label: 'Support Flags', value: '—', changePercent: null },
-          { label: 'Avg Session Time', value: '—', changePercent: null },
+          { label: 'Active Students', value: '—', changePercent: null, hint: 'Loading…' },
+          { label: 'Lessons Completed', value: '—', changePercent: null, hint: 'Loading…' },
+          { label: 'Support Flags', value: '—', changePercent: null, hint: 'Loading…' },
+          { label: 'Avg Session Time', value: '—', changePercent: null, hint: 'Loading…' },
         ]).map((s) => (
           <StatCard key={s.label} {...s} />
         ))}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Send, Plus, RefreshCw } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
+import InfoTooltip from '../components/InfoTooltip'
 import AssignChildModal from '../components/AssignChildModal'
 import {
   adminQueryKeys,
@@ -12,10 +13,10 @@ import {
 import { getApiErrorMessage } from '../lib/auth-api'
 
 const QUICK_ACTIONS = [
-  { label: 'Add Student' },
-  { label: 'Assign Wayfinder' },
-  { label: 'Generate Report' },
-  { label: 'Send Annoucement' },
+  { label: 'View Students', href: '/students' },
+  { label: 'Assign Wayfinder', action: 'assign' },
+  { label: 'Generate Report', href: '/reports' },
+  { label: 'Open Alerts', href: '/alerts' },
 ]
 
 const CORAL = '#FF7B61'
@@ -65,7 +66,7 @@ function formatDurationMinutes(value) {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
 }
 
-function StatCard({ label, value, sub, onClick, clickHint }) {
+function StatCard({ label, value, sub, onClick, clickHint, hint }) {
   const interactive = typeof onClick === 'function'
   const Comp = interactive ? 'button' : 'div'
 
@@ -86,10 +87,11 @@ function StatCard({ label, value, sub, onClick, clickHint }) {
       </div>
       <div className="min-w-0 flex flex-col gap-0.5">
         <p
-          className="text-white font-medium"
+          className="text-white font-medium inline-flex items-center gap-1.5"
           style={{ fontSize: '11px', lineHeight: '16px', letterSpacing: '0%' }}
         >
-          {label}
+          <span className="truncate">{label}</span>
+          {hint ? <InfoTooltip content={hint} align="left" /> : null}
         </p>
         <div className="flex items-baseline gap-2 min-w-0">
           <span className="text-white text-2xl font-semibold leading-none">{value}</span>
@@ -161,7 +163,13 @@ function EngagementChart({ points }) {
   if (!series) {
     return (
       <div className="rounded-2xl bg-[#1c1b2e] border border-white/5 p-6 lg:p-7">
-        <h3 className="text-white text-lg font-semibold">Platform Engagement Trends</h3>
+        <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+          Platform Engagement Trends
+          <InfoTooltip
+            content="Monthly active users = distinct students with ≥1 ClassSession that month. Average daily time = mean ClassSession duration. Source: ClassSession history."
+            align="left"
+          />
+        </h3>
         <p className="text-white/50 text-sm mt-1">
           Monthly active users and average daily time spent
         </p>
@@ -176,7 +184,13 @@ function EngagementChart({ points }) {
     <div className="rounded-2xl bg-[#1c1b2e] border border-white/5 p-6 lg:p-7">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h3 className="text-white text-lg font-semibold">Platform Engagement Trends</h3>
+          <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+            Platform Engagement Trends
+            <InfoTooltip
+              content="Monthly active users = distinct students with ≥1 ClassSession that month. Average daily time = mean ClassSession duration. Source: ClassSession history."
+              align="left"
+            />
+          </h3>
           <p className="text-white/50 text-sm mt-1">
             Monthly active users (students who attempted ≥1 course) and average daily time spent
           </p>
@@ -295,7 +309,13 @@ function DailySessionOverview({ overview }) {
 
   return (
     <div className="rounded-2xl bg-[#313044] p-6 flex flex-col">
-      <h3 className="text-white text-lg font-semibold">Daily Session Overview</h3>
+      <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+        Daily Session Overview
+        <InfoTooltip
+          content="Live IN_PROGRESS sessions, lessons completed today, and average duration of today’s completed ClassSession rows."
+          align="left"
+        />
+      </h3>
 
       <div
         className="mt-5 flex flex-col"
@@ -390,7 +410,7 @@ function RecentAlerts({ alerts, onViewAll }) {
   )
 }
 
-function QuickActions({ onAssignWayfinder }) {
+function QuickActions({ onAssignWayfinder, onNavigate }) {
   return (
     <div className="rounded-2xl bg-[#313044] p-6">
       <h3 className="text-white text-lg font-semibold mb-5">Quick Actions</h3>
@@ -400,7 +420,10 @@ function QuickActions({ onAssignWayfinder }) {
           <button
             key={a.label}
             type="button"
-            onClick={a.label === 'Assign Wayfinder' ? onAssignWayfinder : undefined}
+            onClick={() => {
+              if (a.action === 'assign') onAssignWayfinder?.()
+              else if (a.href) onNavigate?.(a.href)
+            }}
             className="flex items-center gap-4 rounded-[12px] bg-white/[0.05] hover:bg-white/[0.08] transition-colors text-left"
             style={{ padding: '14px 24px' }}
           >
@@ -497,11 +520,13 @@ export default function AdminDashboard() {
           label="Total Active Students This Month"
           value={dashboardQuery.isLoading ? '—' : String(stats?.activeStudentsThisMonth ?? 0)}
           sub={formatSignedPercent(stats?.activeStudentsChangePercent)}
+          hint="Distinct children who started at least one ClassSession this calendar month. % compares to last month. Source: ClassSession.childId."
         />
         <StatCard
           label="Current Active Sessions"
           value={dashboardQuery.isLoading ? '—' : String(stats?.currentActiveSessions ?? 0)}
           sub="Currently ongoing"
+          hint="ClassSession rows with status IN_PROGRESS that were updated recently (live lessons right now)."
         />
         <StatCard
           label="Pending Alerts"
@@ -509,6 +534,7 @@ export default function AdminDashboard() {
           sub="Needs attention"
           onClick={() => navigate('/alerts')}
           clickHint="Open Alerts Center"
+          hint="Open / unresolved alerts from the admin alert feed (lesson failures, SEL, stale parent messages, etc.). Click to open Alerts Center."
         />
         <StatCard
           label="Wayfinders Active"
@@ -516,6 +542,7 @@ export default function AdminDashboard() {
           sub="Online now"
           onClick={() => navigate('/wayfinders?status=active')}
           clickHint="View wayfinders currently online"
+          hint="Wayfinder users whose lastSeenAt heartbeat is within the online presence window. Click to open Wayfinders filtered to online."
         />
       </div>
 
@@ -532,7 +559,10 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <QuickActions onAssignWayfinder={() => setAssignOpen(true)} />
+        <QuickActions
+          onAssignWayfinder={() => setAssignOpen(true)}
+          onNavigate={(href) => navigate(href)}
+        />
         <RecentActivity activity={data?.recentActivity ?? []} />
       </div>
 

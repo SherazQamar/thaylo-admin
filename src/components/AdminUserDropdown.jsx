@@ -45,7 +45,15 @@ export default function AdminUserDropdown() {
           aria-expanded={open}
           aria-haspopup="menu"
         >
-          <span className="block w-9 h-9 rounded-full bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6] flex-shrink-0" />
+          {user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              className="block w-9 h-9 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <span className="block w-9 h-9 rounded-full bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6] flex-shrink-0" />
+          )}
           <span className="text-left leading-tight">
             <span className="block text-white text-[13px] font-semibold">
               {displayName}

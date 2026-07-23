@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,6 +13,11 @@ import {
 } from 'lucide-react'
 import logo from '../assets/logo.png'
 import { adminQueryKeys, fetchAdminAlerts } from '../lib/admin-api'
+import {
+  countUnreadAdminAlerts,
+  pruneAdminAlertLocalState,
+} from '../lib/admin-alert-read'
+import { useAuthStore } from '../stores/auth.store'
 
 const NAV = [
   {
@@ -74,6 +79,7 @@ function formatBadgeCount(count) {
 export default function Sidebar() {
   const { pathname } = useLocation()
   const [collapsed] = useState(false)
+  const userId = useAuthStore((s) => s.user?.id)
 
   const alertsQuery = useQuery({
     queryKey: adminQueryKeys.alerts(),
@@ -83,7 +89,11 @@ export default function Sidebar() {
     staleTime: 15_000,
   })
 
-  const alertCount = alertsQuery.data?.totalCount ?? 0
+  const alertCount = useMemo(() => {
+    if (!alertsQuery.data) return 0
+    pruneAdminAlertLocalState(userId, alertsQuery.data)
+    return countUnreadAdminAlerts(alertsQuery.data, userId)
+  }, [alertsQuery.data, userId])
 
   return (
     <>
