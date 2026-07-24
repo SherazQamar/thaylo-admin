@@ -254,7 +254,7 @@ export default function StudentManagement() {
   return (
     <AdminLayout title="Student Management" userSubtitle="Super Admin">
       <div className="space-y-2">
-        <h2 className="text-white text-3xl font-bold tracking-tight">
+        <h2 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">
           Student Management
         </h2>
         <p className="text-white/50 text-sm">

@@ -18,7 +18,7 @@ import {
 
 const TABS = ['CONTENT', 'MODULE', 'LESSON']
 
-export function reteachBracketLabel(ratePercent) {
+function reteachBracketLabel(ratePercent) {
   const rate = Number(ratePercent)
   if (!Number.isFinite(rate)) return '—'
   if (rate < 15) return 'Low'
@@ -105,7 +105,7 @@ export default function LearningSystem() {
         </Link>
       </div>
 
-      <div className="flex items-center gap-8 border-b border-white/5 -mx-6 lg:-mx-10 px-6 lg:px-10 mb-6 overflow-x-auto">
+      <div className="flex items-center gap-6 sm:gap-8 border-b border-white/5 -mx-4 sm:-mx-6 lg:-mx-10 px-4 sm:px-6 lg:px-10 mb-6 overflow-x-auto">
         {TABS.map((t) => {
           const active = tab === t
           return (
@@ -141,7 +141,7 @@ export default function LearningSystem() {
               value={avgStat?.value ?? insightsQuery.data?.stats?.[0]?.value ?? '—'}
               hint={
                 avgStat?.hint ??
-                'From ClassSession (last 30 days, Grade 4, ELA): % of completed attempts with passed=true. Same source as Insights → Report.'
+                'Share of finished lessons that students passed (last 30 days, Grade 4 ELA). Same measure as Insights → Report.'
               }
             />
             <StatCard
@@ -149,7 +149,7 @@ export default function LearningSystem() {
               value={completionStat?.value ?? '—'}
               hint={
                 completionStat?.hint ??
-                'From ClassSession (last 30 days, Grade 4, ELA): completed ÷ started lesson attempts.'
+                'Share of started lessons that students finished (last 30 days, Grade 4 ELA).'
               }
             />
             <StatCard
@@ -162,7 +162,7 @@ export default function LearningSystem() {
               }
               hint={
                 reteachStat?.hint ??
-                'From ClassSession retakes (isRetake or attempt 2+). Low <15%, Medium 15–35%, High >35%. Same Insights API as Report.'
+                'How often students need another try. Low is under 15%, Medium 15–35%, High above 35%.'
               }
             />
           </div>

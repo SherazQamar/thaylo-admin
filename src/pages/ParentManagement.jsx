@@ -39,8 +39,8 @@ function GuardianBox({ parent }) {
 
   return (
     <div
-      className="rounded-2xl px-5 py-2.5 text-center"
-      style={{ minWidth: '180px', backgroundColor: '#525162' }}
+      className="rounded-2xl px-4 sm:px-5 py-2.5 text-left sm:text-center w-full sm:w-auto sm:min-w-[180px]"
+      style={{ backgroundColor: '#525162' }}
     >
       <p className="text-white text-sm font-semibold truncate">{primary}</p>
       <p className="text-white/60 text-xs mt-0.5 truncate">
@@ -57,7 +57,7 @@ function ChildRow({ child, onAssign }) {
   const isAssigned = !!child.wayfinderId
 
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-11 h-11 rounded-full shrink-0 bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6]" />
         <div className="min-w-0">
@@ -66,7 +66,7 @@ function ChildRow({ child, onAssign }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pl-14 sm:pl-0">
         <span
           className={
             'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ' +
@@ -98,31 +98,45 @@ function ChildRow({ child, onAssign }) {
 function ParentRow({ p, expanded, onToggle, onAssignChild }) {
   return (
     <div className={expanded ? 'pb-4' : ''}>
-      <div
-        className="grid items-center gap-4 px-5 py-4"
-        style={{ gridTemplateColumns: '1.4fr 0.7fr 0.7fr 1.2fr auto' }}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-full shrink-0 bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6]" />
-          <div className="min-w-0">
-            <p className="text-white text-base font-semibold leading-tight truncate">
-              {p.name ?? 'Unnamed'}
-            </p>
-            <p className="text-white/40 text-xs mt-0.5 truncate">{p.email}</p>
+      <div className="flex flex-col gap-3 px-4 sm:px-5 py-4 md:grid md:items-center md:gap-4 md:[grid-template-columns:1.4fr_0.7fr_0.7fr_1.2fr_auto]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full shrink-0 bg-gradient-to-br from-[#f59e0b] via-[#ec4899] to-[#8b5cf6]" />
+            <div className="min-w-0">
+              <p className="text-white text-base font-semibold leading-tight truncate">
+                {p.name ?? 'Unnamed'}
+              </p>
+              <p className="text-white/40 text-xs mt-0.5 truncate">{p.email}</p>
+              <p className="md:hidden text-[#00CED1] text-sm font-medium mt-1">
+                {p.childrenCount} {p.childrenCount === 1 ? 'Child' : 'Children'}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={p.childrenCount === 0}
+            className="md:hidden w-8 h-8 rounded-full bg-[#00CED1]/15 border border-[#00CED1]/30 flex items-center justify-center text-[#00CED1] hover:bg-[#00CED1]/25 disabled:opacity-30 shrink-0"
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? (
+              <ChevronUp size={15} strokeWidth={2} />
+            ) : (
+              <ChevronDown size={15} strokeWidth={2} />
+            )}
+          </button>
         </div>
 
-        <p className="text-[#00CED1] text-sm font-medium">
+        <p className="hidden md:block text-[#00CED1] text-sm font-medium">
           {p.childrenCount} {p.childrenCount === 1 ? 'Child' : 'Children'}
         </p>
 
-        <div>
+        <div className="flex flex-wrap items-center gap-2 md:contents">
           <VerifiedBadge verified={p.isEmailVerified} />
+          <GuardianBox parent={p} />
         </div>
 
-        <GuardianBox parent={p} />
-
-        <div className="flex items-center gap-2 justify-end">
+        <div className="hidden md:flex items-center gap-2 justify-end">
           <button
             type="button"
             onClick={onToggle}
@@ -141,13 +155,8 @@ function ParentRow({ p, expanded, onToggle, onAssignChild }) {
 
       {expanded && p.children.length > 0 && (
         <div
-          className="mx-5 mt-1 flex flex-col"
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            borderRadius: '24px',
-            padding: '24px',
-            gap: '16px',
-          }}
+          className="mx-4 sm:mx-5 mt-1 flex flex-col rounded-[18px] sm:rounded-[24px] p-4 sm:p-6 gap-4"
+          style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
         >
           {p.children.map((child) => (
             <ChildRow
@@ -182,7 +191,7 @@ export default function ParentManagement() {
   return (
     <AdminLayout title="Parent Management" userSubtitle="Super Admin">
       <div className="space-y-2">
-        <h2 className="text-white text-3xl font-bold tracking-tight">
+        <h2 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">
           Parent Management
         </h2>
         <p className="text-white/50 text-sm">
@@ -190,7 +199,7 @@ export default function ParentManagement() {
         </p>
       </div>
 
-      <div className="mt-6 bg-[#313044] p-6" style={{ borderRadius: '18px' }}>
+      <div className="mt-6 bg-[#313044] p-4 sm:p-6" style={{ borderRadius: '18px' }}>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-5">
           <h3 className="text-white text-lg font-semibold">Parent Directory</h3>
 

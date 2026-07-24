@@ -110,16 +110,21 @@ function ModulePerformance({ families, moduleLabel, studentCount }) {
 
   const R = 60
   const C = 2 * Math.PI * R
-  let offset = 0
+  const sliceOffsets = normalized.reduce((acc, s, i) => {
+    if (i === 0) return [0]
+    const prev = normalized[i - 1]
+    const dash = (prev.slice / 100) * C
+    return [...acc, acc[i - 1] + dash]
+  }, [])
 
   return (
     <div className="rounded-2xl p-6 flex-1" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center gap-6">
         <div className="relative w-[180px] h-[180px] shrink-0">
           <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
-            {normalized.map((s) => {
+            {normalized.map((s, i) => {
               const dash = (s.slice / 100) * C
-              const circle = (
+              return (
                 <circle
                   key={s.family}
                   cx="80"
@@ -129,12 +134,10 @@ function ModulePerformance({ families, moduleLabel, studentCount }) {
                   stroke={s.color}
                   strokeWidth="18"
                   strokeDasharray={`${dash} ${C - dash}`}
-                  strokeDashoffset={-offset}
+                  strokeDashoffset={-sliceOffsets[i]}
                   opacity={totalPercent > 0 || s.started > 0 ? 1 : 0.35}
                 />
               )
-              offset += dash
-              return circle
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -151,7 +154,7 @@ function ModulePerformance({ families, moduleLabel, studentCount }) {
           <h3 className="text-white text-base font-semibold mb-1 inline-flex items-center gap-2">
             Module Performance
             <InfoTooltip
-              content="Skill-family mix from ClassSession attempts in the selected filters, mapped via 4th-grade ELA skill families. Percent is share of started attempts in each family."
+              content="How lesson attempts are spread across skill areas (for example Word & Language Logic, Reading). Each % is that skill’s share of started attempts."
               align="left"
             />
           </h3>
@@ -189,7 +192,7 @@ function HighestReteachLessons({ lessons }) {
       <h3 className="text-white text-base font-semibold inline-flex items-center gap-2">
         Lessons Needing Most Reteach
         <InfoTooltip
-          content="Lessons with the highest reteach rate in the filter: retake attempts ÷ started attempts per lessonKey from ClassSession."
+          content="Lessons students retake most often. Higher % means more students needed another try on that lesson."
           align="left"
         />
       </h3>
@@ -489,19 +492,19 @@ function AlertView() {
       label: 'High',
       count: byPriority.High.length,
       color: '#FF6F6F',
-      hint: 'Alerts mapped to High priority from GET /admin/alerts (priorityAlerts + otherAlerts). Includes red lesson failures and other high-priority signals.',
+      hint: 'Urgent alerts that need attention first — for example serious lesson struggles and other high-priority signals.',
     },
     {
       label: 'Medium',
       count: byPriority.Medium.length,
       color: '#FFC542',
-      hint: 'Alerts with Medium priority from the live admin alert feed (lesson / parent / SEL signals).',
+      hint: 'Medium-priority alerts from lessons, parents, or wellbeing signals that should be reviewed soon.',
     },
     {
       label: 'Low',
       count: byPriority.Low.length,
       color: '#00CED1',
-      hint: 'Alerts with Low priority from the live admin alert feed.',
+      hint: 'Lower-priority alerts that are useful to track but usually do not need immediate action.',
     },
   ]
 
@@ -639,7 +642,7 @@ export default function Insights() {
 
   return (
     <SuperAdminLayout title="Insights" userSubtitle="Super Admin">
-      <div className="flex items-center gap-8 border-b border-white/5 -mx-6 lg:-mx-10 px-6 lg:px-10 mb-6 overflow-x-auto">
+      <div className="flex items-center gap-6 sm:gap-8 border-b border-white/5 -mx-4 sm:-mx-6 lg:-mx-10 px-4 sm:px-6 lg:px-10 mb-6 overflow-x-auto">
         {TABS.map((t) => {
           const active = tab === t
           return (

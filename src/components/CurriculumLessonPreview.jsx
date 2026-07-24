@@ -153,7 +153,7 @@ export default function CurriculumLessonPreview({
   onPreviewAiPlan,
   status,
   isArchived,
-  statusPending,
+  statusPending: _statusPending,
   workflowPending = false,
   runtimeReadyCount = 0,
   lessonCount = 0,
