@@ -166,7 +166,7 @@ function EngagementChart({ points }) {
         <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
           Platform Engagement Trends
           <InfoTooltip
-            content="Monthly active users = distinct students with ≥1 ClassSession that month. Average daily time = mean ClassSession duration. Source: ClassSession history."
+            content="How many students used the app each month, and how long they typically spent learning each day."
             align="left"
           />
         </h3>
@@ -187,7 +187,7 @@ function EngagementChart({ points }) {
           <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
             Platform Engagement Trends
             <InfoTooltip
-              content="Monthly active users = distinct students with ≥1 ClassSession that month. Average daily time = mean ClassSession duration. Source: ClassSession history."
+              content="How many students used the app each month, and how long they typically spent learning each day."
               align="left"
             />
           </h3>
@@ -312,7 +312,7 @@ function DailySessionOverview({ overview }) {
       <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
         Daily Session Overview
         <InfoTooltip
-          content="Live IN_PROGRESS sessions, lessons completed today, and average duration of today’s completed ClassSession rows."
+          content="Students learning right now, lessons finished today, and the average time those finished lessons took."
           align="left"
         />
       </h3>
@@ -496,7 +496,7 @@ export default function AdminDashboard() {
     <AdminLayout title="Admin Dashboard">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div className="space-y-2">
-          <h2 className="text-white text-3xl font-bold tracking-tight">Dashboard</h2>
+          <h2 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-white/50 text-sm">
             Overview of Thaylo Global AI School performance.
           </p>
@@ -520,13 +520,13 @@ export default function AdminDashboard() {
           label="Total Active Students This Month"
           value={dashboardQuery.isLoading ? '—' : String(stats?.activeStudentsThisMonth ?? 0)}
           sub={formatSignedPercent(stats?.activeStudentsChangePercent)}
-          hint="Distinct children who started at least one ClassSession this calendar month. % compares to last month. Source: ClassSession.childId."
+          hint="Students who started at least one lesson this month. The % shows change compared with last month."
         />
         <StatCard
           label="Current Active Sessions"
           value={dashboardQuery.isLoading ? '—' : String(stats?.currentActiveSessions ?? 0)}
           sub="Currently ongoing"
-          hint="ClassSession rows with status IN_PROGRESS that were updated recently (live lessons right now)."
+          hint="Lessons that students are taking right now."
         />
         <StatCard
           label="Pending Alerts"
@@ -534,7 +534,7 @@ export default function AdminDashboard() {
           sub="Needs attention"
           onClick={() => navigate('/alerts')}
           clickHint="Open Alerts Center"
-          hint="Open / unresolved alerts from the admin alert feed (lesson failures, SEL, stale parent messages, etc.). Click to open Alerts Center."
+          hint="Open alerts that still need attention (lesson struggles, wellbeing signals, unanswered parent messages, and similar). Click to open Alerts Center."
         />
         <StatCard
           label="Wayfinders Active"
@@ -542,7 +542,7 @@ export default function AdminDashboard() {
           sub="Online now"
           onClick={() => navigate('/wayfinders?status=active')}
           clickHint="View wayfinders currently online"
-          hint="Wayfinder users whose lastSeenAt heartbeat is within the online presence window. Click to open Wayfinders filtered to online."
+          hint="Wayfinders who are currently online. Click to open the Wayfinders list filtered to online."
         />
       </div>
 

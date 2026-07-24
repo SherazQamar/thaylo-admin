@@ -68,7 +68,10 @@ export default function SetStaffPassword() {
   }, [newPassword, confirmPassword])
 
   return (
-    <div className="min-h-screen flex bg-[#111023]" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div
+      className="min-h-dvh flex flex-col lg:flex-row bg-[#111023]"
+      style={{ fontFamily: 'Inter, sans-serif' }}
+    >
       <div className="hidden lg:flex w-1/2 bg-[#313044] flex-col justify-between p-12">
         <img src={logo} alt="Thaylo" className="h-10 w-auto object-contain self-start" />
         <div>
@@ -84,9 +87,34 @@ export default function SetStaffPassword() {
         <p className="text-white/30 text-xs">Thaylo platform staff access</p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
+      <div
+        className="flex-1 flex flex-col items-stretch justify-start lg:items-center lg:justify-center px-5 sm:px-6 py-6 lg:py-10 overflow-y-auto"
+        style={{
+          paddingTop: 'max(1.25rem, env(safe-area-inset-top, 0px))',
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
+        <div className="lg:hidden mb-8 flex items-center gap-2.5">
+          <img src={logo} alt="Thaylo" className="h-10 w-10 object-contain" />
+          <div className="leading-none">
+            <span
+              className="block text-[18px] font-medium tracking-[0.08em]"
+              style={{
+                background: 'linear-gradient(90deg, #60D624, #00A19A)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              THAYLO
+            </span>
+            <span className="block text-[7px] tracking-[0.2em] text-[#60D624]/70 uppercase mt-0.5">
+              GLOBAL AI SCHOOL
+            </span>
+          </div>
+        </div>
+
         <div
-          className="w-full max-w-[440px] rounded-2xl border border-white/10 p-8"
+          className="w-full max-w-[440px] mx-auto rounded-2xl border border-white/10 p-6 sm:p-8"
           style={{ backgroundColor: '#313044' }}
         >
           {tokenMissing ? (

@@ -412,7 +412,7 @@ function UsersTable({
   isLoading,
   isError,
   error,
-  page,
+  page: _page,
   onPageChange,
   currentUserId,
   onEdit,

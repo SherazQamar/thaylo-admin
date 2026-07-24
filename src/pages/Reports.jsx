@@ -140,7 +140,7 @@ function LearningActivityChart({ points }) {
         <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
           Learning Activity Trend
           <InfoTooltip
-            content="Daily count of COMPLETED ClassSession rows in the selected report range."
+            content="How many lessons students finished each day in the selected date range."
             align="left"
           />
         </h3>
@@ -216,7 +216,7 @@ function SupportIndicators({ indicators }) {
       <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
         Support Indicators
         <InfoTooltip
-          content="Academic / engagement / social-emotional flag counts derived from lesson alerts and related signals in the selected range. Bars are relative within this panel."
+          content="Counts of academic, engagement, and social-emotional flags in the selected date range. Bar sizes are relative within this panel."
           align="left"
         />
       </h3>
@@ -267,7 +267,7 @@ function TimePerModule({ modules }) {
       <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
         Average Time Spent per Module This Week
         <InfoTooltip
-          content="Average ClassSession duration minutes this calendar week, grouped by curriculum subject (ELA/Math/etc.)."
+          content="Average lesson time this week, grouped by subject (ELA, Math, and others)."
           align="left"
         />
       </h3>
@@ -340,7 +340,7 @@ function MasteryProfile({ profile }) {
       <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
         Mastery Profile
         <InfoTooltip
-          content="Breakdown of COMPLETED ClassSession outcomes in the range by attempt number (1st / 2nd / 3rd pass) vs support-needed (not passed)."
+          content="How finished lessons turned out in this range: passed on 1st, 2nd, or 3rd try, versus lessons that still need support."
           align="left"
         />
       </h3>
