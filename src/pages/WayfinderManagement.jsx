@@ -384,7 +384,7 @@ export default function WayfinderManagement() {
     <AdminLayout title="Wayfinder Management" userSubtitle="Super Admin">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div className="space-y-2">
-          <h2 className="text-white text-3xl font-bold tracking-tight">
+          <h2 className="text-white text-2xl sm:text-3xl font-bold tracking-tight">
             Wayfinder Management
           </h2>
           <p className="text-white/50 text-sm">
@@ -392,7 +392,7 @@ export default function WayfinderManagement() {
             region, then last name.
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start sm:self-auto">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto self-stretch sm:self-auto">
           <button
             type="button"
             onClick={() => {
@@ -401,7 +401,7 @@ export default function WayfinderManagement() {
               setAssignChildId(null)
               setAssignOpen(true)
             }}
-            className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors w-full sm:w-auto"
           >
             <Users size={16} />
             Assign Child
@@ -414,7 +414,7 @@ export default function WayfinderManagement() {
               setAssignChildId(null)
               setAssignOpen(true)
             }}
-            className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-semibold px-5 py-2.5 transition-colors w-full sm:w-auto"
           >
             <Users size={16} />
             Reassign
@@ -422,7 +422,7 @@ export default function WayfinderManagement() {
           <button
             type="button"
             onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-5 py-2.5 transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00CED1] hover:bg-[#00B8BB] text-[#111023] text-sm font-semibold px-5 py-2.5 transition-colors w-full sm:w-auto"
           >
             <Plus size={16} strokeWidth={2.5} />
             Add Wayfinder

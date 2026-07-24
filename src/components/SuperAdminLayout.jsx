@@ -14,12 +14,12 @@ export default function SuperAdminLayout({
 
   return (
     <div
-      className="min-h-screen flex bg-[#111023]"
+      className="min-h-dvh flex bg-[#111023]"
       style={{ fontFamily: 'Inter, sans-serif' }}
     >
       <SuperAdminSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0 pt-[64px] md:pt-0 pb-[72px] md:pb-0">
+      <div className="flex-1 flex flex-col min-w-0 pt-[56px] pb-[72px] md:pt-0 md:pb-0">
         <header className="hidden md:flex h-auto min-h-20 px-6 lg:px-10 py-4 items-center justify-between border-b border-white/5 bg-[#111023] sticky top-0 z-30">
           <div className="flex flex-col gap-1 min-w-0">
             <h1 className="text-white text-base lg:text-lg font-semibold uppercase tracking-[0.18em]">
@@ -31,12 +31,13 @@ export default function SuperAdminLayout({
           <AdminUserDropdown />
         </header>
 
-        <main className="flex-1 p-6 lg:p-10">
-          {breadcrumbItems && (
-            <div className="md:hidden mb-4">
-              <Breadcrumbs items={breadcrumbItems} />
-            </div>
-          )}
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">
+          <div className="md:hidden mb-5">
+            <h1 className="text-white text-[15px] font-semibold uppercase tracking-[0.16em] mb-2">
+              {title}
+            </h1>
+            {breadcrumbItems && <Breadcrumbs items={breadcrumbItems} />}
+          </div>
           {children}
         </main>
       </div>

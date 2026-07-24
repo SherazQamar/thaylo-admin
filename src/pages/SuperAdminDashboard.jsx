@@ -103,7 +103,7 @@ function PlatformActivityChart({ activity }) {
           <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
             Platform Activity
             <InfoTooltip
-              content="Distinct students with a ClassSession started that day, bucketed by curriculum subject (mapped to ELA/Math/Science/Social Studies/Electives). Source: ClassSession + Curriculum for the last 7 days."
+              content="How many students started a lesson each day over the last 7 days, grouped by subject (ELA, Math, Science, Social Studies, Electives)."
               align="left"
             />
           </h3>
@@ -174,7 +174,12 @@ function TimeInContentAreaDonut({ segments }) {
   const visible = (segments ?? []).filter((s) => s.percent > 0)
   const R = 60
   const C = 2 * Math.PI * R
-  let offset = 0
+  const sliceOffsets = visible.reduce((acc, _s, i) => {
+    if (i === 0) return [0]
+    const prev = visible[i - 1]
+    const dash = (prev.percent / 100) * C
+    return [...acc, acc[i - 1] + dash]
+  }, [])
 
   const labelPositions = [
     { x: 80, y: 18 },
@@ -191,7 +196,7 @@ function TimeInContentAreaDonut({ segments }) {
           <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
             Time in Content Area
             <InfoTooltip
-              content="Share of ClassSession duration minutes this week by subject. Duration uses completedAt − startedAt (or updatedAt for in-progress). Source: live ClassSession rows."
+              content="Share of learning time this week by subject. Shows where students spent their lesson minutes."
               align="left"
             />
           </h3>
@@ -210,7 +215,7 @@ function TimeInContentAreaDonut({ segments }) {
             <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
               {visible.map((s, i) => {
                 const dash = (s.percent / 100) * C
-                const circle = (
+                return (
                   <circle
                     key={s.subject}
                     cx="80"
@@ -220,11 +225,9 @@ function TimeInContentAreaDonut({ segments }) {
                     stroke={SUBJECT_COLORS[s.subject]}
                     strokeWidth="22"
                     strokeDasharray={`${dash} ${C - dash}`}
-                    strokeDashoffset={-offset}
+                    strokeDashoffset={-sliceOffsets[i]}
                   />
                 )
-                offset += dash
-                return circle
               })}
               {visible.map((s, i) => {
                 if (s.percent < 8) return null
@@ -282,7 +285,7 @@ function AlertsTrendsBySubject({ rows }) {
         <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
           Alerts Trends by Subject
           <InfoTooltip
-            content="WayfinderAlert rows created this week that are linked to a ClassSession curriculum subject. Percent is share of those lesson-linked alerts. Alerts without a lesson session are excluded."
+            content="Alerts created this week that are tied to a lesson subject. The % shows each subject’s share of those alerts. Alerts not linked to a lesson are left out."
             align="left"
           />
         </h3>

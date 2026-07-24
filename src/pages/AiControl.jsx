@@ -226,7 +226,7 @@ export default function AiControl() {
   const {
     data: voiceCatalog = FREE_TIER_FALLBACK_CATALOG,
     isLoading: voicesLoading,
-    error: voicesError,
+    error: _voicesError,
   } = useQuery({
     queryKey: aiSettingsQueryKeys.elevenLabsVoices(),
     queryFn: fetchElevenLabsVoices,
@@ -251,7 +251,7 @@ export default function AiControl() {
 
   // A voice is only flagged unavailable when it is not usable on the current
   // ElevenLabs plan (or it isn't present in the account at all).
-  const selectedVoiceUnavailable = Boolean(form?.elevenLabsVoiceId)
+  const selectedVoiceUnavailable = form?.elevenLabsVoiceId
     ? !selectedVoice || selectedVoice.apiAvailable === false
     : false
 
