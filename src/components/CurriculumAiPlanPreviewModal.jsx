@@ -372,12 +372,42 @@ export default function CurriculumAiPlanPreviewModal({
                 <BlackboardPreview segment={currentSegment} />
 
                 <div className="rounded-xl border border-white/10 bg-[#252338]/80 p-4">
-                  <div className="flex items-center gap-2 text-white/50 text-xs font-semibold uppercase tracking-wider mb-2">
-                    <Volume2 size={14} className="text-[#00CED1]" />
-                    Instructor narration (spoken aloud)
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 text-white/50 text-xs font-semibold uppercase tracking-wider">
+                      <Volume2 size={14} className="text-[#00CED1]" />
+                      Instructor narration (spoken aloud)
+                    </div>
+                    {(() => {
+                      const words = (currentSegment.narrationScript || '')
+                        .trim()
+                        .split(/\s+/)
+                        .filter(Boolean).length
+                      const sentences = (currentSegment.narrationScript || '')
+                        .split(/[.!?]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean).length
+                      const teachOk = currentSegment.phase === 'teach' ? words <= 70 && sentences <= 4 : words <= 45 && sentences <= 2
+                      return (
+                        <span
+                          className={
+                            'text-[10px] rounded-full px-2 py-0.5 font-semibold ' +
+                            (teachOk
+                              ? 'bg-emerald-500/15 text-emerald-300'
+                              : 'bg-amber-500/15 text-amber-200')
+                          }
+                        >
+                          {sentences} sent · {words} words
+                          {teachOk ? ' · LiveAvatar OK' : ' · consider shortening'}
+                        </span>
+                      )
+                    })()}
                   </div>
                   <p className="text-white/90 text-sm leading-relaxed whitespace-pre-wrap select-text">
                     {currentSegment.narrationScript}
+                  </p>
+                  <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
+                    Target for LiveAvatar: teach 2–4 short sentences (~70 words); practice/check 1–2 sentences (~45 words).
+                    Regenerate the AI plan after prompt updates to refresh old long scripts.
                   </p>
                 </div>
 

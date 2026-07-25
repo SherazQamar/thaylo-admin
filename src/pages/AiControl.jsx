@@ -646,8 +646,8 @@ export default function AiControl() {
         </Card>
 
         <Card
-          title="Voice"
-          description="ElevenLabs is recommended for a consistent Calyx voice across all student devices."
+          title="Voice (TTS fallback / onboarding only)"
+          description="Used when LiveAvatar is OFF, or if the avatar fails. These ElevenLabs settings do NOT control live class avatar speech."
         >
           <div className="grid gap-5">
             <div>
@@ -905,7 +905,7 @@ export default function AiControl() {
 
         <Card
           title="Live class avatar (HeyGen LiveAvatar)"
-          description="Talking-avatar engine for classroom narration. Leave off for voice-only."
+          description="Primary classroom voice + lip-sync. When this is on, LiveAvatar owns class speech. Super Admin Voice/ElevenLabs settings above are ignored for the avatar path."
         >
           <div className="space-y-4">
             <label className="block space-y-1.5">
@@ -934,14 +934,19 @@ export default function AiControl() {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs uppercase tracking-wide text-white/45">Voice ID (optional)</span>
+                    <span className="text-xs uppercase tracking-wide text-white/45">LiveAvatar Voice ID</span>
                     <input
                       type="text"
                       value={form.heygenVoiceId}
                       onChange={(e) => updateField('heygenVoiceId', e.target.value)}
-                      placeholder="Optional LiveAvatar voice UUID"
-                      className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00CED1]/50"
+                      placeholder="Unused — avatar default voice"
+                      disabled
+                      className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white/40 outline-none opacity-60"
                     />
+                    <p className="text-[11px] text-white/40 leading-relaxed">
+                      Class uses the voice already assigned to this LiveAvatar avatar (low-latency flash model).
+                      Super Admin ElevenLabs Voice settings are not used in live class.
+                    </p>
                   </label>
                 </div>
                 <label className="block space-y-1.5">
