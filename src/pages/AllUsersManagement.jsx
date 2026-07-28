@@ -330,14 +330,14 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
         className="relative w-full max-w-[440px] rounded-2xl border border-white/5 p-7"
         style={{ backgroundColor: '#313044' }}
       >
-        <button
-          type="button"
+    <button
+      type="button"
           onClick={onClose}
           className="absolute top-5 right-5 text-white/60 hover:text-white"
           aria-label="Close"
         >
           <X size={16} />
-        </button>
+    </button>
         <h3 className="text-white text-xl font-bold">Edit User</h3>
         <p className="text-white/45 text-sm mt-1">{user.email}</p>
         <form
@@ -399,7 +399,7 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
             >
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -440,16 +440,16 @@ function UsersTable({
       {!isLoading && !isError && users.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead>
+          <thead>
               <tr className="text-white/45 text-xs uppercase tracking-wider border-b border-white/10">
                 <th className="py-3 pr-3 font-medium">Name</th>
                 <th className="py-3 pr-3 font-medium">Email</th>
                 <th className="py-3 pr-3 font-medium">Role</th>
                 <th className="py-3 pr-3 font-medium">Status</th>
                 <th className="py-3 pr-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+            </tr>
+          </thead>
+          <tbody>
               {users.map((u) => {
                 const isSelf = Number(u.id) === Number(currentUserId)
                 const isSuperAdmin = u.role === 'SUPER_ADMIN'
@@ -537,11 +537,11 @@ function UsersTable({
                         </button>
                       </div>
                     </td>
-                  </tr>
+            </tr>
                 )
               })}
-            </tbody>
-          </table>
+          </tbody>
+        </table>
         </div>
       ) : null}
       <ListPagination
@@ -710,16 +710,16 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
       {students.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead>
+          <thead>
               <tr className="text-white/45 text-xs uppercase tracking-wider border-b border-white/10">
                 <th className="py-3 pr-3 font-medium">Student</th>
                 <th className="py-3 pr-3 font-medium">Grade</th>
                 <th className="py-3 pr-3 font-medium">Parent</th>
                 <th className="py-3 pr-3 font-medium">Wayfinder</th>
                 <th className="py-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+            </tr>
+          </thead>
+          <tbody>
               {students.map((s) => {
                 const displayName =
                   [s.firstName, s.secondName].filter(Boolean).join(' ') || s.userName
@@ -774,8 +774,8 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
                   </tr>
                 )
               })}
-            </tbody>
-          </table>
+          </tbody>
+        </table>
         </div>
       ) : null}
       <ListPagination
@@ -923,16 +923,16 @@ export default function AllUsersManagement() {
 
       <div className="flex flex-wrap gap-2 mt-6">
         {TABS.map((t) => (
-          <button
+            <button
             key={t.id}
-            type="button"
+              type="button"
             onClick={() => {
               setTab(t.id)
               setPage(1)
               setMessage(null)
               setError(null)
             }}
-            className={
+              className={
               'rounded-full px-4 py-2 text-xs font-semibold tracking-wide ' +
               (tab === t.id
                 ? 'bg-[#00CED1] text-[#111023]'
@@ -979,7 +979,7 @@ export default function AllUsersManagement() {
               className="absolute top-1/2 -translate-y-1/2 rounded-full bg-white transition-all"
               style={{ width: 16, height: 16, left: showInactive ? 19 : 3 }}
             />
-          </button>
+            </button>
           Show inactive
         </label>
       </div>
