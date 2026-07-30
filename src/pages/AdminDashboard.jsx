@@ -10,7 +10,7 @@ import {
   DASHBOARD_POLL_INTERVAL_MS,
   fetchAdminDashboard,
 } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 
 const QUICK_ACTIONS = [
   { label: 'View Students', href: '/students' },
@@ -488,6 +488,7 @@ export default function AdminDashboard() {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   })
+  useNotifyError(dashboardQuery.error, dashboardQuery.isError)
 
   const data = dashboardQuery.data
   const stats = data?.stats
@@ -510,9 +511,7 @@ export default function AdminDashboard() {
       </div>
 
       {dashboardQuery.isError && (
-        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
-          {getApiErrorMessage(dashboardQuery.error)}
-        </div>
+        <p className="mt-4 text-white/50 text-sm">Unable to load dashboard right now.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">

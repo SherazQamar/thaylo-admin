@@ -13,7 +13,8 @@ import {
   markAdminAlertRead,
   markAdminAlertResolved,
 } from '../lib/admin-alert-read'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useAuthStore } from '../stores/auth.store'
 
 function formatAlertDate(iso) {
@@ -163,7 +164,6 @@ export default function AlertsCenter() {
   const queryClient = useQueryClient()
   const userId = useAuthStore((s) => s.user?.id)
   const [selected, setSelected] = useState(null)
-  const [actionError, setActionError] = useState(null)
   const [localTick, setLocalTick] = useState(0)
 
   const alertsQuery = useQuery({
@@ -172,6 +172,7 @@ export default function AlertsCenter() {
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   })
+  useNotifyError(alertsQuery.error, alertsQuery.isError)
 
   const activeAlerts = useMemo(() => {
     void localTick
@@ -195,7 +196,6 @@ export default function AlertsCenter() {
 
   async function clearAlert(alert, mode) {
     if (!alert?.id) return
-    setActionError(null)
 
     if (alert.lessonAlertId) {
       try {
@@ -205,7 +205,7 @@ export default function AlertsCenter() {
           await dismissAdminAlert(alert.lessonAlertId)
         }
       } catch (err) {
-        setActionError(getApiErrorMessage(err))
+        notify.error(err)
         return
       }
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.alerts() })
@@ -230,7 +230,6 @@ export default function AlertsCenter() {
   }
 
   function handleOpen(a) {
-    setActionError(null)
     const newlyRead = markAdminAlertRead(userId, a.id)
     if (newlyRead) bumpLocalState()
     setSelected(toDrawerAlert(a))
@@ -246,10 +245,8 @@ export default function AlertsCenter() {
         </p>
       </div>
 
-      {(alertsQuery.isError || actionError) && (
-        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
-          {actionError || getApiErrorMessage(alertsQuery.error)}
-        </div>
+      {alertsQuery.isError && (
+        <p className="mt-4 text-white/50 text-sm">Unable to load alerts right now.</p>
       )}
 
       {alertsQuery.isLoading ? (

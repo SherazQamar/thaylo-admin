@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, ChevronDown } from 'lucide-react'
+import { notify } from '../lib/notify'
 
 const TIMING_OPTIONS = [
   { value: 'IMMEDIATE', label: 'Immediate (after signup)' },
@@ -103,7 +104,6 @@ const EMPTY_FORM = {
  *   onClose: () => void;
  *   onSubmit?: (payload: import('../lib/onboarding-api').OnboardingWalkthroughPayload) => void | Promise<void>;
  *   isSubmitting?: boolean;
- *   error?: string;
  * }} props
  */
 export default function OnboardingWalkthroughModal({
@@ -114,7 +114,6 @@ export default function OnboardingWalkthroughModal({
   onClose,
   onSubmit,
   isSubmitting,
-  error,
 }) {
   const [form, setForm] = useState(EMPTY_FORM)
 
@@ -160,6 +159,7 @@ export default function OnboardingWalkthroughModal({
       : undefined
 
     if (form.status === 'PUBLISHED' && (!form.showFrom || !form.showUntil)) {
+      notify.error('Survey start and end times are required when publishing.')
       return
     }
 
@@ -211,12 +211,6 @@ export default function OnboardingWalkthroughModal({
             <X size={18} />
           </button>
         </div>
-
-        {error && (
-          <div className="mb-4 rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import {
   CURRICULUM_STATUS_LABELS,
   curriculumQueryKeys,
@@ -60,6 +60,7 @@ export default function LearningSystem() {
     queryKey: curriculumQueryKeys.list({ page: 1, limit: 50 }),
     queryFn: () => fetchCurricula({ page: 1, limit: 50 }),
   })
+  useNotifyError(listQuery.error, listQuery.isError)
 
   const detailQuery = useQuery({
     queryKey: curriculumQueryKeys.detail(selectedId),
@@ -130,7 +131,7 @@ export default function LearningSystem() {
         <p className="text-white/50 text-sm">Loading curricula…</p>
       ) : null}
       {listQuery.isError ? (
-        <p className="text-[#FF6F6F] text-sm">{getApiErrorMessage(listQuery.error)}</p>
+        <p className="text-white/50 text-sm">Unable to load curricula right now.</p>
       ) : null}
 
       {tab === 'CONTENT' && (

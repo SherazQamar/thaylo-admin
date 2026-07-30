@@ -4,7 +4,8 @@ import { CheckCircle2, Cpu, Play, Save, Volume2 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
 import PasswordInput from '../components/PasswordInput'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import {
   AI_SETTINGS_FIELD_RANGES,
   clampValue,
@@ -219,10 +220,11 @@ export default function AiControl() {
   const [settingsTab, setSettingsTab] = useState("instructor")
   const voicePreviewRef = useRef(null)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isError } = useQuery({
     queryKey: aiSettingsQueryKeys.detail(),
     queryFn: fetchAiSettings,
   })
+  useNotifyError(error, isError)
 
   const {
     data: voiceCatalog = FREE_TIER_FALLBACK_CATALOG,
@@ -322,12 +324,10 @@ export default function AiControl() {
         type: 'success',
         message: 'Settings saved successfully. AI Instructor and Bloom Buddy will use these values.',
       })
+      notify.success('Settings saved successfully.')
     },
     onError: (err) => {
-      setSaveFeedback({
-        type: 'error',
-        message: getApiErrorMessage(err, 'Unable to save AI settings.'),
-      })
+      notify.error(err, 'Unable to save AI settings.')
     },
   })
 
@@ -529,7 +529,7 @@ export default function AiControl() {
       })
       setStatusMessage('Voice preview played using browser TTS.')
     } catch (err) {
-      setStatusMessage(await getAiVoiceTestErrorMessage(err))
+      notify.error(await getAiVoiceTestErrorMessage(err))
     } finally {
       setIsTestingVoice(false)
       setVoiceTestPhase(null)
@@ -595,9 +595,9 @@ export default function AiControl() {
           </button>
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-            {getApiErrorMessage(error, 'Unable to load AI settings.')}
+        {isError && (
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/60 text-sm">
+            Unable to load AI settings right now.
           </div>
         )}
 
@@ -1083,18 +1083,14 @@ export default function AiControl() {
         </Card>
 
         <div className="flex flex-col items-end gap-3">
-          {saveFeedback && (
+          {saveFeedback?.type === 'success' && (
             <div
               className={
                 'w-full rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ' +
-                (saveFeedback.type === 'success'
-                  ? 'border-[#60D624]/30 bg-[#60D624]/10 text-[#60D624]'
-                  : 'border-[#FF7B7B]/30 bg-[#FF7B7B]/10 text-[#FF7B7B]')
+                'border-[#60D624]/30 bg-[#60D624]/10 text-[#60D624]'
               }
             >
-              {saveFeedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-              ) : null}
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{saveFeedback.message}</span>
             </div>
           )}

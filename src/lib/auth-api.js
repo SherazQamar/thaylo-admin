@@ -55,9 +55,13 @@ export async function refreshAdminSession() {
 
 /**
  * @param {unknown} error
+ * @param {string} [fallback]
  * @returns {string}
  */
-export function getApiErrorMessage(error) {
+export function getApiErrorMessage(
+  error,
+  fallback = 'Something went wrong. Please try again.',
+) {
   if (error instanceof Error && !isAxiosError(error)) {
     return error.message
   }
@@ -66,7 +70,7 @@ export function getApiErrorMessage(error) {
     if (typeof message === 'string') return message
     if (Array.isArray(message)) return message.join(', ')
   }
-  return 'Something went wrong. Please try again.'
+  return fallback
 }
 
 export function isAdminPortalRole(role) {

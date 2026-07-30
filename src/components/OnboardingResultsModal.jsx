@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { X, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react'
 import ListPagination from './ListPagination'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { formatOnboardingAnswerValue } from '../lib/format-onboarding-answer'
 import {
   ONBOARDING_AUDIENCE_LABELS,
@@ -124,6 +124,7 @@ export default function OnboardingResultsModal({
     queryFn: () => fetchOnboardingWalkthroughResults(walkthroughId, params),
     enabled: open && !!walkthroughId,
   })
+  useNotifyError(resultsQuery.error, open && resultsQuery.isError)
 
   if (!open || !walkthroughId) return null
 
@@ -251,9 +252,7 @@ export default function OnboardingResultsModal({
         )}
 
         {resultsQuery.isError && (
-          <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm mb-4">
-            {getApiErrorMessage(resultsQuery.error)}
-          </div>
+          <p className="text-white/50 text-sm mb-4">Unable to load feedback right now.</p>
         )}
 
         {resultsQuery.isLoading && (

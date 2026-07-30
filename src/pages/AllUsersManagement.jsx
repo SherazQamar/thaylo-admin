@@ -4,7 +4,8 @@ import { Search, Pencil, Trash2, Plus, X, ChevronDown, Mail } from 'lucide-react
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
 import ConfirmModal from '../components/ConfirmModal'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import { useAuthStore } from '../stores/auth.store'
 import {
@@ -119,8 +120,6 @@ function CreateStaffModal({ open, onClose, onCreated }) {
     gradeLevel: '',
     languagesSpoken: '',
   })
-  const [error, setError] = useState('')
-
   useEffect(() => {
     if (!open) return
     setForm({
@@ -133,7 +132,6 @@ function CreateStaffModal({ open, onClose, onCreated }) {
       gradeLevel: '',
       languagesSpoken: '',
     })
-    setError('')
   }, [open])
 
   const createMutation = useMutation({
@@ -142,7 +140,7 @@ function CreateStaffModal({ open, onClose, onCreated }) {
       onCreated?.(user)
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   if (!open) return null
@@ -151,17 +149,16 @@ function CreateStaffModal({ open, onClose, onCreated }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    setError('')
     if (!form.fullName.trim() || !form.email.trim()) {
-      setError('Full name and email are required.')
+      notify.error('Full name and email are required.')
       return
     }
     if (form.phone && !isValidPhoneDigits(normalizePhoneDigits(form.phone))) {
-      setError(PHONE_VALIDATION_MESSAGE)
+      notify.error(PHONE_VALIDATION_MESSAGE)
       return
     }
     if (isWayfinder && !form.region) {
-      setError('Hiring region is required for Wayfinders.')
+      notify.error('Hiring region is required for Wayfinders.')
       return
     }
 
@@ -267,7 +264,6 @@ function CreateStaffModal({ open, onClose, onCreated }) {
               </Field>
             </>
           ) : null}
-          {error ? <p className="text-xs text-[#FF6F6F]">{error}</p> : null}
           <div className="grid grid-cols-2 gap-4 pt-2">
             <button
               type="button"
@@ -294,14 +290,12 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [deactivate, setDeactivate] = useState(false)
-  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!open || !user) return
     setName(user.name ?? '')
     setPhone(user.phone ? formatPhoneInput(user.phone) : '')
     setDeactivate(!user.isActive)
-    setError('')
   }, [open, user])
 
   const isOtherSuperAdmin = user?.role === 'SUPER_ADMIN' && user?.id !== currentUserId
@@ -318,7 +312,7 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
       onSaved?.(updated)
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   if (!open || !user) return null
@@ -345,11 +339,11 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
           onSubmit={(e) => {
             e.preventDefault()
             if (!name.trim()) {
-              setError('Name is required.')
+              notify.error('Name is required.')
               return
             }
             if (phone && !isValidPhoneDigits(normalizePhoneDigits(phone))) {
-              setError(PHONE_VALIDATION_MESSAGE)
+              notify.error(PHONE_VALIDATION_MESSAGE)
               return
             }
             saveMutation.mutate()
@@ -383,7 +377,6 @@ function EditUserModal({ open, user, currentUserId, onClose, onSaved }) {
               <span className="text-white/40 text-xs">(cannot deactivate Super Admins)</span>
             ) : null}
           </label>
-          {error ? <p className="text-xs text-[#FF6F6F]">{error}</p> : null}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               type="button"
@@ -424,13 +417,15 @@ function UsersTable({
   updatingId,
   showInactive,
 }) {
+  useNotifyError(error, isError)
+
   return (
     <div className="mt-6 rounded-2xl p-6" style={{ backgroundColor: '#313044' }}>
       {isLoading ? (
         <p className="text-white/50 text-sm py-8 text-center">Loading…</p>
       ) : null}
       {isError ? (
-        <p className="text-[#FF6F6F] text-sm py-8 text-center">{getApiErrorMessage(error)}</p>
+        <p className="text-white/50 text-sm py-8 text-center">Unable to load users right now.</p>
       ) : null}
       {!isLoading && !isError && users.length === 0 ? (
         <p className="text-white/50 text-sm py-8 text-center">
@@ -558,14 +553,12 @@ function EditStudentModal({ open, student, onClose, onSaved }) {
   const [firstName, setFirstName] = useState('')
   const [secondName, setSecondName] = useState('')
   const [userName, setUserName] = useState('')
-  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!open || !student) return
     setFirstName(student.firstName ?? '')
     setSecondName(student.secondName ?? '')
     setUserName(student.userName ?? '')
-    setError('')
   }, [open, student])
 
   const saveMutation = useMutation({
@@ -579,7 +572,7 @@ function EditStudentModal({ open, student, onClose, onSaved }) {
       onSaved?.(updated)
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   if (!open || !student) return null
@@ -608,7 +601,7 @@ function EditStudentModal({ open, student, onClose, onSaved }) {
           onSubmit={(e) => {
             e.preventDefault()
             if (!userName.trim()) {
-              setError('Username is required.')
+              notify.error('Username is required.')
               return
             }
             saveMutation.mutate()
@@ -623,7 +616,6 @@ function EditStudentModal({ open, student, onClose, onSaved }) {
           <Field label="Username">
             <TextInput value={userName} onChange={(e) => setUserName(e.target.value)} />
           </Field>
-          {error ? <p className="text-xs text-[#FF6F6F]">{error}</p> : null}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               type="button"
@@ -646,7 +638,7 @@ function EditStudentModal({ open, student, onClose, onSaved }) {
   )
 }
 
-function StudentsDirectory({ search, page, onPageChange, onMessage, onError, showInactive }) {
+function StudentsDirectory({ search, page, onPageChange, onMessage, showInactive }) {
   const queryClient = useQueryClient()
   const [editStudent, setEditStudent] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -662,6 +654,7 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
     queryKey: adminQueryKeys.students(params),
     queryFn: () => fetchStudents(params),
   })
+  useNotifyError(query.error, query.isError)
   const students = query.data?.items ?? []
 
   const deleteMutation = useMutation({
@@ -670,10 +663,9 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
       await queryClient.invalidateQueries({ queryKey: ['admin', 'students'] })
       setDeleteTarget(null)
       onMessage?.('Student deactivated.')
-      onError?.(null)
     },
     onError: (err) => {
-      onError?.(getApiErrorMessage(err))
+      notify.error(err)
       setDeleteTarget(null)
     },
   })
@@ -683,9 +675,8 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'students'] })
       onMessage?.('Student restored.')
-      onError?.(null)
     },
-    onError: (err) => onError?.(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   return (
@@ -698,8 +689,8 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
         <p className="text-white/50 text-sm py-8 text-center">Loading students…</p>
       ) : null}
       {query.isError ? (
-        <p className="text-[#FF6F6F] text-sm py-8 text-center">
-          {getApiErrorMessage(query.error)}
+        <p className="text-white/50 text-sm py-8 text-center">
+          Unable to load students right now.
         </p>
       ) : null}
       {!query.isLoading && students.length === 0 ? (
@@ -792,7 +783,6 @@ function StudentsDirectory({ search, page, onPageChange, onMessage, onError, sho
         onSaved={async () => {
           await queryClient.invalidateQueries({ queryKey: ['admin', 'students'] })
           onMessage?.('Student updated.')
-          onError?.(null)
         }}
       />
 
@@ -825,7 +815,6 @@ export default function AllUsersManagement() {
   const [editUser, setEditUser] = useState(null)
   const [deleteUser, setDeleteUser] = useState(null)
   const [message, setMessage] = useState(null)
-  const [error, setError] = useState(null)
   const [updatingId, setUpdatingId] = useState(null)
   const [resendingId, setResendingId] = useState(null)
   const debouncedSearch = useDebouncedValue(search)
@@ -851,6 +840,7 @@ export default function AllUsersManagement() {
     queryFn: () => fetchSystemUsers(listParams),
     enabled: !isStudents,
   })
+  useNotifyError(usersQuery.error, usersQuery.isError && !isStudents)
 
   const deleteMutation = useMutation({
     mutationFn: (id) => {
@@ -863,10 +853,9 @@ export default function AllUsersManagement() {
       await queryClient.invalidateQueries({ queryKey: ['super-admin', 'users'] })
       setDeleteUser(null)
       setMessage('User deactivated.')
-      setError(null)
     },
     onError: (err) => {
-      setError(getApiErrorMessage(err))
+      notify.error(err)
       setDeleteUser(null)
     },
   })
@@ -878,11 +867,10 @@ export default function AllUsersManagement() {
       setResendingId(null)
       const user = usersQuery.data?.items?.find((u) => u.id === id)
       setMessage(`Invite resent to ${user?.email ?? 'user'}.`)
-      setError(null)
     },
     onError: (err) => {
       setResendingId(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -892,11 +880,10 @@ export default function AllUsersManagement() {
       await queryClient.invalidateQueries({ queryKey: ['super-admin', 'users'] })
       setUpdatingId(null)
       setMessage(`Updated ${updated.name ?? updated.email} to ${formatSystemRole(updated.role)}.`)
-      setError(null)
     },
     onError: (err) => {
       setUpdatingId(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -930,7 +917,6 @@ export default function AllUsersManagement() {
               setTab(t.id)
               setPage(1)
               setMessage(null)
-              setError(null)
             }}
               className={
               'rounded-full px-4 py-2 text-xs font-semibold tracking-wide ' +
@@ -984,17 +970,11 @@ export default function AllUsersManagement() {
         </label>
       </div>
 
-      {(message || error) && (
-        <div
-          className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-            error
-              ? 'bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20'
-              : 'bg-[#00CED1]/10 text-[#00CED1] border border-[#00CED1]/20'
-          }`}
-        >
-          {error ?? message}
+      {message ? (
+        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#00CED1]/10 text-[#00CED1] border border-[#00CED1]/20">
+          {message}
         </div>
-      )}
+      ) : null}
 
       {isStudents ? (
         <StudentsDirectory
@@ -1002,7 +982,6 @@ export default function AllUsersManagement() {
           page={page}
           onPageChange={setPage}
           onMessage={setMessage}
-          onError={setError}
           showInactive={showInactive}
         />
       ) : (
@@ -1041,7 +1020,6 @@ export default function AllUsersManagement() {
         onCreated={async () => {
           await queryClient.invalidateQueries({ queryKey: ['super-admin', 'users'] })
           setMessage('Staff invited. They will receive a set-password email.')
-          setError(null)
         }}
       />
 
@@ -1055,7 +1033,6 @@ export default function AllUsersManagement() {
           setMessage(
             updated?.isActive === false ? 'User deactivated.' : 'User updated.',
           )
-          setError(null)
         }}
       />
 
@@ -1074,12 +1051,12 @@ export default function AllUsersManagement() {
         onConfirm={() => {
           if (!deleteUser) return
           if (deleteUser.role === 'SUPER_ADMIN') {
-            setError('Super Admins cannot be deactivated.')
+            notify.error('Super Admins cannot be deactivated.')
             setDeleteUser(null)
             return
           }
           if (Number(deleteUser.id) === Number(currentUserId)) {
-            setError('You cannot deactivate your own account.')
+            notify.error('You cannot deactivate your own account.')
             setDeleteUser(null)
             return
           }

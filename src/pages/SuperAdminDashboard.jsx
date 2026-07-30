@@ -4,7 +4,7 @@ import { ChevronRight, FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { SUBJECT_COLORS, SUBJECT_MODULES } from '../lib/subject-colors'
 import {
   fetchRuntimePersonalizationHealth,
@@ -372,7 +372,7 @@ function rateTone(rate) {
   return 'text-[#FF7B7B]'
 }
 
-function RuntimePersonalizationHealthCard({ data, isLoading, error }) {
+function RuntimePersonalizationHealthCard({ data, isLoading, loadFailed }) {
   return (
     <div className="rounded-2xl p-5" style={{ backgroundColor: '#313044' }}>
       <div className="flex items-center justify-between gap-3">
@@ -399,8 +399,8 @@ function RuntimePersonalizationHealthCard({ data, isLoading, error }) {
 
       {isLoading ? (
         <p className="text-white/50 text-sm mt-4">Loading health counters…</p>
-      ) : error ? (
-        <p className="text-[#FF7B7B] text-sm mt-4">{error}</p>
+      ) : loadFailed ? (
+        <p className="text-white/50 text-sm mt-4">Unable to load health data right now.</p>
       ) : data ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
@@ -466,6 +466,9 @@ export default function SuperAdminDashboard() {
     refetchInterval: SUPER_DASHBOARD_POLL_INTERVAL_MS,
   })
 
+  useNotifyError(dashboardQuery.error, dashboardQuery.isError)
+  useNotifyError(runtimeHealthQuery.error, runtimeHealthQuery.isError)
+
   const data = dashboardQuery.data
 
   return (
@@ -474,7 +477,7 @@ export default function SuperAdminDashboard() {
         <p className="text-white/50 text-sm py-6">Loading dashboard…</p>
       )}
       {dashboardQuery.isError && (
-        <p className="text-[#FF7B7B] text-sm py-6">{getApiErrorMessage(dashboardQuery.error)}</p>
+        <p className="text-white/50 text-sm py-6">Unable to load dashboard right now.</p>
       )}
 
       {!dashboardQuery.isLoading && !dashboardQuery.isError && (
@@ -504,7 +507,7 @@ export default function SuperAdminDashboard() {
             <RuntimePersonalizationHealthCard
               data={runtimeHealthQuery.data}
               isLoading={runtimeHealthQuery.isLoading}
-              error={runtimeHealthQuery.isError ? getApiErrorMessage(runtimeHealthQuery.error) : null}
+              loadFailed={runtimeHealthQuery.isError}
             />
           </div>
 
