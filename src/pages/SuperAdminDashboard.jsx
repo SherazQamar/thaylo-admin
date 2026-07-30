@@ -7,6 +7,7 @@ import InfoTooltip from '../components/InfoTooltip'
 import { getApiErrorMessage } from '../lib/auth-api'
 import { SUBJECT_COLORS, SUBJECT_MODULES } from '../lib/subject-colors'
 import {
+  fetchRuntimePersonalizationHealth,
   fetchSuperAdminDashboard,
   SUPER_DASHBOARD_POLL_INTERVAL_MS,
   superAdminQueryKeys,
@@ -357,10 +358,111 @@ function QuickAccess() {
   )
 }
 
+function formatPercent(value) {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${Math.round(value * 100)}%`
+}
+
+function rateTone(rate) {
+  if (rate == null || Number.isNaN(rate)) {
+    return 'text-white'
+  }
+  if (rate <= 0.05) return 'text-[#60D624]'
+  if (rate <= 0.15) return 'text-[#FFB020]'
+  return 'text-[#FF7B7B]'
+}
+
+function RuntimePersonalizationHealthCard({ data, isLoading, error }) {
+  return (
+    <div className="rounded-2xl p-5" style={{ backgroundColor: '#313044' }}>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-white text-lg font-semibold inline-flex items-center gap-2">
+          AI Personalization Health
+          <InfoTooltip
+            content="Live counters for runtime lesson personalization (cache hits, misses, timeouts, and fallback usage)."
+            align="left"
+          />
+        </h3>
+        {data ? (
+          <span
+            className={
+              'text-xs px-2 py-1 rounded-full border ' +
+              (data.enabled
+                ? 'text-[#60D624] border-[#60D624]/40 bg-[#60D624]/10'
+                : 'text-[#FFB020] border-[#FFB020]/40 bg-[#FFB020]/10')
+            }
+          >
+            {data.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        ) : null}
+      </div>
+
+      {isLoading ? (
+        <p className="text-white/50 text-sm mt-4">Loading health counters…</p>
+      ) : error ? (
+        <p className="text-[#FF7B7B] text-sm mt-4">{error}</p>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div className="rounded-xl p-3 bg-[#252338]">
+              <p className="text-white/45 text-[11px]">Attempts</p>
+              <p className="text-white text-lg font-semibold mt-1">{data.counters.attempted}</p>
+            </div>
+            <div className="rounded-xl p-3 bg-[#252338]">
+              <p className="text-white/45 text-[11px]">Cache Hit Rate</p>
+              <p className={`text-lg font-semibold mt-1 ${rateTone(1 - (data.rates.cacheHitRate ?? 0))}`}>
+                {formatPercent(data.rates.cacheHitRate)}
+              </p>
+            </div>
+            <div className="rounded-xl p-3 bg-[#252338]">
+              <p className="text-white/45 text-[11px]">Timeout Rate</p>
+              <p className={`text-lg font-semibold mt-1 ${rateTone(data.rates.timeoutRate)}`}>
+                {formatPercent(data.rates.timeoutRate)}
+              </p>
+            </div>
+            <div className="rounded-xl p-3 bg-[#252338]">
+              <p className="text-white/45 text-[11px]">Fallback Rate</p>
+              <p className={`text-lg font-semibold mt-1 ${rateTone(data.rates.fallbackRate)}`}>
+                {formatPercent(data.rates.fallbackRate)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-white/65">
+            <div className="rounded-xl p-3 bg-[#252338] space-y-1.5">
+              <p className="text-white/45 uppercase tracking-wide text-[10px]">Cache Counters</p>
+              <p>Memory hits: <span className="text-white">{data.counters.cacheHitMemory}</span></p>
+              <p>Redis hits: <span className="text-white">{data.counters.cacheHitRedis}</span></p>
+              <p>Misses: <span className="text-white">{data.counters.cacheMiss}</span></p>
+              <p>Memory active entries: <span className="text-white">{data.cache.memoryEntriesActive}</span></p>
+            </div>
+            <div className="rounded-xl p-3 bg-[#252338] space-y-1.5">
+              <p className="text-white/45 uppercase tracking-wide text-[10px]">AI Outcomes</p>
+              <p>Success: <span className="text-white">{data.counters.aiSuccess}</span></p>
+              <p>Timeout: <span className="text-white">{data.counters.aiTimeout}</span></p>
+              <p>Error: <span className="text-white">{data.counters.aiError}</span></p>
+              <p>Fallback count: <span className="text-white">{data.counters.fallback}</span></p>
+            </div>
+          </div>
+
+          <p className="text-white/35 text-[11px] mt-3">
+            Timeout {data.timeoutMs}ms • Cache TTL {data.ttlSeconds}s • Updated {new Date(data.generatedAt).toLocaleTimeString()}
+          </p>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 export default function SuperAdminDashboard() {
   const dashboardQuery = useQuery({
     queryKey: superAdminQueryKeys.dashboard(),
     queryFn: fetchSuperAdminDashboard,
+    refetchInterval: SUPER_DASHBOARD_POLL_INTERVAL_MS,
+  })
+  const runtimeHealthQuery = useQuery({
+    queryKey: superAdminQueryKeys.runtimePersonalizationHealth(),
+    queryFn: fetchRuntimePersonalizationHealth,
     refetchInterval: SUPER_DASHBOARD_POLL_INTERVAL_MS,
   })
 
@@ -396,6 +498,14 @@ export default function SuperAdminDashboard() {
 
           <div className="mt-5">
             <AlertsTrendsBySubject rows={data?.alertsBySubject} />
+          </div>
+
+          <div className="mt-5">
+            <RuntimePersonalizationHealthCard
+              data={runtimeHealthQuery.data}
+              isLoading={runtimeHealthQuery.isLoading}
+              error={runtimeHealthQuery.isError ? getApiErrorMessage(runtimeHealthQuery.error) : null}
+            />
           </div>
 
           <div className="mt-7">
