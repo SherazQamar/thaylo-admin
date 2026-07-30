@@ -36,6 +36,7 @@ import { DASHBOARD_POLL_INTERVAL_MS } from './admin-api'
 export const superAdminQueryKeys = {
   dashboard: () => ['super-admin', 'dashboard'],
   insights: (params) => ['super-admin', 'insights', params],
+  runtimePersonalizationHealth: () => ['super-admin', 'runtime-personalization-health'],
 }
 
 export { DASHBOARD_POLL_INTERVAL_MS as SUPER_DASHBOARD_POLL_INTERVAL_MS }
@@ -45,6 +46,46 @@ export { DASHBOARD_POLL_INTERVAL_MS as SUPER_DASHBOARD_POLL_INTERVAL_MS }
  */
 export async function fetchSuperAdminDashboard() {
   const { data } = await api.get('/admin/super-dashboard')
+  return data.data
+}
+
+/**
+ * @typedef {{
+ *   enabled: boolean;
+ *   timeoutMs: number;
+ *   ttlSeconds: number;
+ *   counters: {
+ *     attempted: number;
+ *     eligible: number;
+ *     disabled: number;
+ *     noInterests: number;
+ *     cacheHitMemory: number;
+ *     cacheHitRedis: number;
+ *     cacheMiss: number;
+ *     aiSuccess: number;
+ *     aiTimeout: number;
+ *     aiError: number;
+ *     fallback: number;
+ *   };
+ *   rates: {
+ *     cacheHitRate: number | null;
+ *     fallbackRate: number | null;
+ *     timeoutRate: number | null;
+ *     aiErrorRate: number | null;
+ *   };
+ *   cache: {
+ *     memoryEntriesTotal: number;
+ *     memoryEntriesActive: number;
+ *   };
+ *   generatedAt: string;
+ * }} RuntimePersonalizationHealth
+ */
+
+/**
+ * @returns {Promise<RuntimePersonalizationHealth>}
+ */
+export async function fetchRuntimePersonalizationHealth() {
+  const { data } = await api.get('/admin/runtime-personalization/health')
   return data.data
 }
 

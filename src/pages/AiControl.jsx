@@ -216,6 +216,7 @@ export default function AiControl() {
   const [saveFeedback, setSaveFeedback] = useState(null)
   const [isTestingVoice, setIsTestingVoice] = useState(false)
   const [voiceTestPhase, setVoiceTestPhase] = useState(null)
+  const [settingsTab, setSettingsTab] = useState("instructor")
   const voicePreviewRef = useRef(null)
 
   const { data, isLoading, error } = useQuery({
@@ -567,6 +568,33 @@ export default function AiControl() {
           </div>
         </div>
 
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSettingsTab("instructor")}
+            className={
+              "px-4 py-2 rounded-full text-sm font-semibold transition-colors border " +
+              (settingsTab === "instructor"
+                ? "bg-[#00CED1]/15 border-[#00CED1]/50 text-white"
+                : "bg-[#111023] border-white/10 text-white/60 hover:text-white/80 hover:border-[#00CED1]/40")
+            }
+          >
+            AI instructor
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsTab("bloom")}
+            className={
+              "px-4 py-2 rounded-full text-sm font-semibold transition-colors border " +
+              (settingsTab === "bloom"
+                ? "bg-[#00CED1]/15 border-[#00CED1]/50 text-white"
+                : "bg-[#111023] border-white/10 text-white/60 hover:text-white/80 hover:border-[#00CED1]/40")
+            }
+          >
+            Bloom Buddy
+          </button>
+        </div>
+
         {error && (
           <div className="rounded-xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
             {getApiErrorMessage(error, 'Unable to load AI settings.')}
@@ -585,65 +613,69 @@ export default function AiControl() {
           </div>
         )}
 
-        <Card
-          title="AI Instructor"
-          description="Teaches curriculum in live class and guides onboarding walkthroughs."
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <div>
-              <Label>Name</Label>
-              <TextInput
-                value={form.instructorName}
-                onChange={(event) => updateField('instructorName', event.target.value)}
-              />
+        {settingsTab === "instructor" ? (
+          <Card
+            title="AI Instructor"
+            description="Teaches curriculum in live class and guides onboarding walkthroughs."
+          >
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <Label>Name</Label>
+                <TextInput
+                  value={form.instructorName}
+                  onChange={(event) => updateField('instructorName', event.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Tagline</Label>
+                <TextInput
+                  value={form.instructorTagline}
+                  onChange={(event) => updateField('instructorTagline', event.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Teaching tone</Label>
+                <TextArea
+                  value={form.instructorTone}
+                  onChange={(event) => updateField('instructorTone', event.target.value)}
+                  placeholder="clear, patient, and encouraging"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Tagline</Label>
-              <TextInput
-                value={form.instructorTagline}
-                onChange={(event) => updateField('instructorTagline', event.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Teaching tone</Label>
-              <TextArea
-                value={form.instructorTone}
-                onChange={(event) => updateField('instructorTone', event.target.value)}
-                placeholder="clear, patient, and encouraging"
-              />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        ) : null}
 
-        <Card
-          title="Bloom Buddy (Calyx)"
-          description="SEL only — mood check-ins and emotional support. Does not teach curriculum or onboarding."
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <div>
-              <Label>Name</Label>
-              <TextInput
-                value={form.bloomBuddyName}
-                onChange={(event) => updateField('bloomBuddyName', event.target.value)}
-              />
+        {settingsTab === "bloom" ? (
+          <Card
+            title="Bloom Buddy (Calyx)"
+            description="SEL only — mood check-ins and emotional support. Does not teach curriculum or onboarding."
+          >
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <Label>Name</Label>
+                <TextInput
+                  value={form.bloomBuddyName}
+                  onChange={(event) => updateField('bloomBuddyName', event.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Tagline</Label>
+                <TextInput
+                  value={form.bloomBuddyTagline}
+                  onChange={(event) => updateField('bloomBuddyTagline', event.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Support tone</Label>
+                <TextArea
+                  value={form.bloomBuddyTone}
+                  onChange={(event) => updateField('bloomBuddyTone', event.target.value)}
+                  placeholder="warm, gentle, and supportive"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Tagline</Label>
-              <TextInput
-                value={form.bloomBuddyTagline}
-                onChange={(event) => updateField('bloomBuddyTagline', event.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Support tone</Label>
-              <TextArea
-                value={form.bloomBuddyTone}
-                onChange={(event) => updateField('bloomBuddyTone', event.target.value)}
-                placeholder="warm, gentle, and supportive"
-              />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        ) : null}
 
         <Card
           title="Voice (TTS fallback / onboarding only)"
@@ -1012,36 +1044,41 @@ export default function AiControl() {
           description="Temperature for AI-generated responses. Lower = more predictable."
         >
           <div className="grid gap-5 md:grid-cols-2">
-            <RangeField
-              label={ranges.llm.onboardingTemperature.label}
-              value={form.onboardingTemperature}
-              min={ranges.llm.onboardingTemperature.min}
-              max={ranges.llm.onboardingTemperature.max}
-              step={ranges.llm.onboardingTemperature.step}
-              onChange={(value) => updateField('onboardingTemperature', value)}
-              hint={ranges.llm.onboardingTemperature.hint}
-              info={ranges.llm.onboardingTemperature.info}
-            />
-            <RangeField
-              label={ranges.llm.classroomTemperature.label}
-              value={form.classroomTemperature}
-              min={ranges.llm.classroomTemperature.min}
-              max={ranges.llm.classroomTemperature.max}
-              step={ranges.llm.classroomTemperature.step}
-              onChange={(value) => updateField('classroomTemperature', value)}
-              hint={ranges.llm.classroomTemperature.hint}
-              info={ranges.llm.classroomTemperature.info}
-            />
-            <RangeField
-              label={ranges.llm.bloomBuddyTemperature.label}
-              value={form.bloomBuddyTemperature}
-              min={ranges.llm.bloomBuddyTemperature.min}
-              max={ranges.llm.bloomBuddyTemperature.max}
-              step={ranges.llm.bloomBuddyTemperature.step}
-              onChange={(value) => updateField('bloomBuddyTemperature', value)}
-              hint={ranges.llm.bloomBuddyTemperature.hint}
-              info={ranges.llm.bloomBuddyTemperature.info}
-            />
+            {settingsTab === "instructor" ? (
+              <>
+                <RangeField
+                  label={ranges.llm.onboardingTemperature.label}
+                  value={form.onboardingTemperature}
+                  min={ranges.llm.onboardingTemperature.min}
+                  max={ranges.llm.onboardingTemperature.max}
+                  step={ranges.llm.onboardingTemperature.step}
+                  onChange={(value) => updateField('onboardingTemperature', value)}
+                  hint={ranges.llm.onboardingTemperature.hint}
+                  info={ranges.llm.onboardingTemperature.info}
+                />
+                <RangeField
+                  label={ranges.llm.classroomTemperature.label}
+                  value={form.classroomTemperature}
+                  min={ranges.llm.classroomTemperature.min}
+                  max={ranges.llm.classroomTemperature.max}
+                  step={ranges.llm.classroomTemperature.step}
+                  onChange={(value) => updateField('classroomTemperature', value)}
+                  hint={ranges.llm.classroomTemperature.hint}
+                  info={ranges.llm.classroomTemperature.info}
+                />
+              </>
+            ) : (
+              <RangeField
+                label={ranges.llm.bloomBuddyTemperature.label}
+                value={form.bloomBuddyTemperature}
+                min={ranges.llm.bloomBuddyTemperature.min}
+                max={ranges.llm.bloomBuddyTemperature.max}
+                step={ranges.llm.bloomBuddyTemperature.step}
+                onChange={(value) => updateField('bloomBuddyTemperature', value)}
+                hint={ranges.llm.bloomBuddyTemperature.hint}
+                info={ranges.llm.bloomBuddyTemperature.info}
+              />
+            )}
           </div>
         </Card>
 
