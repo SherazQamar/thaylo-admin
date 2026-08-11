@@ -12,6 +12,7 @@ import {
   createCurriculumFromParsed,
   parseCurriculumDocument,
 } from '../lib/curriculum-api'
+import { notify } from '../lib/notify'
 
 const STEPS = ['Upload', 'Review']
 
@@ -124,7 +125,6 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
   const [step, setStep] = useState(0)
   const [file, setFile] = useState(null)
   const [parseResult, setParseResult] = useState(null)
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingPhase, setLoadingPhase] = useState(null)
   const [loadingComplete, setLoadingComplete] = useState(false)
@@ -135,7 +135,6 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
       setStep(0)
       setFile(null)
       setParseResult(null)
-      setError('')
       setLoading(false)
       setLoadingPhase(null)
       setLoadingComplete(false)
@@ -146,7 +145,6 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
 
   async function handleParse() {
     if (!file) return
-    setError('')
     setLoading(true)
     setLoadingPhase('parse')
     try {
@@ -154,7 +152,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
       setParseResult(result)
       setStep(1)
     } catch (err) {
-      setError(err.message || 'Failed to parse document')
+      notify.error(err, 'Failed to parse document')
     } finally {
       setLoading(false)
       setLoadingPhase(null)
@@ -163,7 +161,6 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
 
   async function handleCreateDraft() {
     if (!parseResult) return
-    setError('')
     setLoading(true)
     setLoadingComplete(false)
     setLoadingPhase('create')
@@ -180,7 +177,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
       onCreated?.(created)
       onClose()
     } catch (err) {
-      setError(err.message || 'Failed to create curriculum draft')
+      notify.error(err, 'Failed to create curriculum draft')
       setLoadingPhase(null)
       setLoadingComplete(false)
     } finally {
@@ -245,12 +242,6 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {error && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-              {error}
-            </div>
-          )}
-
           {step === 0 && (
             <div className="space-y-4">
               <div className="rounded-2xl border border-[#00CED1]/30 bg-[#00CED1]/10 px-4 py-3 text-[#00CED1] text-sm">

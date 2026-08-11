@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchAdminAvatarPresets, setAdminAvatar } from '../lib/avatar-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
+import { notify } from '../lib/notify'
 import { useAuthStore } from '../stores/auth.store'
 
 function CameraIcon() {
@@ -30,6 +31,7 @@ export default function AdminAvatarPicker() {
     queryFn: fetchAdminAvatarPresets,
     enabled: open,
   })
+  useNotifyError(presetsQuery.error, open && presetsQuery.isError)
 
   const saveMutation = useMutation({
     mutationFn: setAdminAvatar,
@@ -43,6 +45,7 @@ export default function AdminAvatarPicker() {
       void queryClient.invalidateQueries({ queryKey: ['admin-avatar-presets'] })
       setOpen(false)
     },
+    onError: (err) => notify.error(err),
   })
 
   useEffect(() => {
@@ -126,8 +129,8 @@ export default function AdminAvatarPicker() {
             ) : null}
 
             {presetsQuery.isError ? (
-              <p className="text-[#FF7B7B] text-sm" role="alert">
-                {getApiErrorMessage(presetsQuery.error)}
+              <p className="text-white/50 text-sm" role="alert">
+                Unable to load avatars right now.
               </p>
             ) : null}
 
@@ -166,12 +169,6 @@ export default function AdminAvatarPicker() {
                   )
                 })}
               </div>
-            ) : null}
-
-            {saveMutation.isError ? (
-              <p className="text-[#FF7B7B] text-sm mt-3" role="alert">
-                {getApiErrorMessage(saveMutation.error)}
-              </p>
             ) : null}
           </div>
         </div>

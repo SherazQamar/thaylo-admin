@@ -8,7 +8,8 @@ import CurriculumLessonPreview from '../components/CurriculumLessonPreview'
 import CurriculumClassPreviewModal from '../components/CurriculumClassPreviewModal'
 import CurriculumAiPlanPreviewModal from '../components/CurriculumAiPlanPreviewModal'
 import CurriculumRefinementChat from '../components/CurriculumRefinementChat'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import {
   CURRICULUM_BETA_INFO_MESSAGE,
   CURRICULUM_STATUS_LABELS,
@@ -57,7 +58,6 @@ export default function CurriculumRefinement() {
   const [previewLessonIndex, setPreviewLessonIndex] = useState(0)
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
   const [publishLoadingMessage, setPublishLoadingMessage] = useState('')
-  const [publishError, setPublishError] = useState('')
 
   const openClassPreview = (lessonIndex = 0) => {
     setPreviewLessonIndex(lessonIndex)
@@ -83,6 +83,7 @@ export default function CurriculumRefinement() {
     queryFn: () => fetchCurriculum(curriculumId),
     enabled: Number.isFinite(curriculumId),
   })
+  useNotifyError(error, isError)
 
   useEffect(() => {
     if (location.state?.previewAiPlan && data?.scriptJson) {
@@ -121,6 +122,10 @@ export default function CurriculumRefinement() {
     },
   })
 
+  useNotifyError(generateRuntimesMutation.error, generateRuntimesMutation.isError)
+  useNotifyError(statusMutation.error, statusMutation.isError)
+  useNotifyError(refineMutation.error, refineMutation.isError)
+
   const runtimeReadyCount = useMemo(
     () => countLessonsWithRuntime(data?.scriptJson),
     [data?.scriptJson],
@@ -133,7 +138,6 @@ export default function CurriculumRefinement() {
 
   async function handlePublishConfirmed() {
     setPublishConfirmOpen(false)
-    setPublishError('')
     try {
       const totalLessons = data?.scriptJson?.lessons?.length ?? 0
       let readyCount = countLessonsWithRuntime(data?.scriptJson)
@@ -150,8 +154,8 @@ export default function CurriculumRefinement() {
 
       setPublishLoadingMessage('Publishing curriculum for students…')
       await statusMutation.mutateAsync('PUBLISHED')
-    } catch (error) {
-      setPublishError(getApiErrorMessage(error))
+    } catch (err) {
+      notify.error(err)
     } finally {
       setPublishLoadingMessage('')
     }
@@ -204,41 +208,17 @@ export default function CurriculumRefinement() {
             </div>
           )}
 
-          {publishError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm space-y-2">
-              <p>{publishError}</p>
-              <Link
-                to="/super-admin/security"
-                className="inline-block text-[#00CED1] underline text-xs"
-              >
-                View details in Security &amp; Logs
-              </Link>
-            </div>
-          )}
-
-          {generateRuntimesMutation.isError && !publishError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-              {getApiErrorMessage(generateRuntimesMutation.error)}
-            </div>
-          )}
-
-          {statusMutation.isError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-              {getApiErrorMessage(statusMutation.error)}
-            </div>
-          )}
-
           {isError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-              {getApiErrorMessage(error)}
+            <p className="text-white/50 text-sm">
+              Unable to load class setup right now.{' '}
               <button
                 type="button"
                 onClick={() => navigate('/super-admin/curriculum')}
-                className="block mt-2 text-[#00CED1] underline text-xs"
+                className="text-[#00CED1] underline text-xs"
               >
                 Back to list
               </button>
-            </div>
+            </p>
           )}
         </div>
 
@@ -281,11 +261,6 @@ export default function CurriculumRefinement() {
                   disabled={chatDisabled}
                 />
               </div>
-              {refineMutation.isError && (
-                <p className="shrink-0 text-[#FF7B7B] text-xs mt-2 px-1">
-                  {getApiErrorMessage(refineMutation.error)}
-                </p>
-              )}
               {chatDisabled && (
                 <p className="shrink-0 text-white/40 text-xs mt-2 px-1">
                   {isPublished

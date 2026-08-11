@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { X, RefreshCw } from 'lucide-react'
 import ListPagination from './ListPagination'
 import { adminQueryKeys, fetchWayfinderStudents } from '../lib/admin-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 
 /**
  * @param {{
@@ -20,6 +21,7 @@ export default function WayfinderStudentsModal({ open, wayfinder, onClose, onRea
     queryFn: () => fetchWayfinderStudents(wayfinder.id, { page }),
     enabled: open && !!wayfinder?.id,
   })
+  useNotifyError(studentsQuery.error, open && studentsQuery.isError)
 
   useEffect(() => {
     if (open) setPage(1)
@@ -60,8 +62,8 @@ export default function WayfinderStudentsModal({ open, wayfinder, onClose, onRea
             <p className="text-white/50 text-sm py-6 text-center">Loading students…</p>
           )}
           {studentsQuery.isError && (
-            <p className="text-[#FF6F6F] text-sm py-6 text-center">
-              Could not load students.
+            <p className="text-white/50 text-sm py-6 text-center">
+              Unable to load students right now.
             </p>
           )}
           {!studentsQuery.isLoading && students.length === 0 && (

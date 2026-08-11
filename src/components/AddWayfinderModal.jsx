@@ -11,6 +11,7 @@ import {
   WAYFINDER_HIRING_REGIONS,
   hiringRegionByCode,
 } from '../lib/wayfinder-hiring-regions'
+import { notify } from '../lib/notify'
 
 const SPECIALTY_OPTIONS = ['Math Coach', 'Lead Mentor', 'Counselor']
 const GRADE_OPTIONS = ['K4', 'K5', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9', 'G10']
@@ -74,12 +75,10 @@ const EMPTY_FORM = {
 }
 
 /**
- * @param {{ open: boolean; onClose: () => void; onSubmit?: (payload: import('../lib/admin-api').CreateWayfinderPayload) => void | Promise<void>; isSubmitting?: boolean; error?: string }} props
+ * @param {{ open: boolean; onClose: () => void; onSubmit?: (payload: import('../lib/admin-api').CreateWayfinderPayload) => void | Promise<void>; isSubmitting?: boolean }} props
  */
-export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmitting, error }) {
+export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmitting }) {
   const [form, setForm] = useState(EMPTY_FORM)
-  const [phoneError, setPhoneError] = useState('')
-  const [regionError, setRegionError] = useState('')
 
   const selectedRegion = useMemo(
     () => hiringRegionByCode(form.region),
@@ -98,8 +97,6 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
   useEffect(() => {
     if (!open) {
       setForm(EMPTY_FORM)
-      setPhoneError('')
-      setRegionError('')
     }
   }, [open])
 
@@ -113,12 +110,12 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
     e.preventDefault()
 
     if (!isValidPhoneDigits(form.phone)) {
-      setPhoneError(PHONE_VALIDATION_MESSAGE)
+      notify.error(PHONE_VALIDATION_MESSAGE)
       return
     }
 
     if (!hiringRegionByCode(form.region)) {
-      setRegionError('Select the hiring / coverage region for this Wayfinder.')
+      notify.error('Select the hiring / coverage region for this Wayfinder.')
       return
     }
 
@@ -127,8 +124,6 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
       .map((lang) => lang.trim())
       .filter(Boolean)
 
-    setPhoneError('')
-    setRegionError('')
     await onSubmit?.({
       fullName: form.fullName.trim(),
       email: form.email.trim(),
@@ -186,12 +181,10 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
                 value={form.phone}
                 maxLength={12}
                 onChange={(e) => {
-                  setPhoneError('')
                   updateField('phone', formatPhoneInput(e.target.value))
                 }}
                 required
               />
-              {phoneError && <p className="mt-1.5 text-xs text-[#FF6F6F]">{phoneError}</p>}
             </Field>
           </div>
 
@@ -212,13 +205,11 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
               <SelectInput
                 value={form.region}
                 onChange={(e) => {
-                  setRegionError('')
                   updateField('region', e.target.value)
                 }}
                 placeholder="Select hiring region"
                 options={regionOptions}
               />
-              {regionError && <p className="mt-1.5 text-xs text-[#FF6F6F]">{regionError}</p>}
             </Field>
             <Field label="Languages Spoken">
               <TextInput
@@ -280,8 +271,6 @@ export default function AddWayfinderModal({ open, onClose, onSubmit, isSubmittin
               </div>
             </Field>
           </div>
-
-          {error && <p className="mt-4 text-xs text-[#FF6F6F]">{error}</p>}
 
           <div className="grid grid-cols-2 gap-4 mt-7">
             <button

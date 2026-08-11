@@ -10,7 +10,7 @@ import AdminLayout from '../components/AdminLayout'
 import AssignChildModal from '../components/AssignChildModal'
 import ListPagination from '../components/ListPagination'
 import { adminQueryKeys, fetchParents } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { formatPhoneDisplay } from '../lib/phone'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 
@@ -184,6 +184,7 @@ export default function ParentManagement() {
     queryKey: adminQueryKeys.parents({ page, search: debouncedSearch || undefined }),
     queryFn: () => fetchParents({ page, search: debouncedSearch || undefined }),
   })
+  useNotifyError(parentsQuery.error, parentsQuery.isError)
 
   const parents = parentsQuery.data?.items ?? []
   const meta = parentsQuery.data?.meta
@@ -225,8 +226,8 @@ export default function ParentManagement() {
           <p className="text-white/50 text-sm py-8 text-center">Loading parents…</p>
         )}
         {parentsQuery.isError && (
-          <p className="text-[#FF6F6F] text-sm py-8 text-center">
-            {getApiErrorMessage(parentsQuery.error)}
+          <p className="text-white/50 text-sm py-8 text-center">
+            Unable to load parents right now.
           </p>
         )}
         {!parentsQuery.isLoading && !parentsQuery.isError && parents.length === 0 && (

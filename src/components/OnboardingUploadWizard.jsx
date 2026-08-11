@@ -17,6 +17,7 @@ import {
   publishParsedOnboarding,
 } from '../lib/onboarding-api'
 import InfoTooltip from './InfoTooltip'
+import { notify } from '../lib/notify'
 
 const STEPS = ['Upload', 'Review', 'Publish']
 
@@ -135,7 +136,6 @@ export default function OnboardingUploadWizard({
   const [parseResult, setParseResult] = useState(null)
   const [isParsing, setIsParsing] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
-  const [error, setError] = useState('')
 
   const [audienceSelection, setAudienceSelection] = useState('BOTH')
   const [timing, setTiming] = useState(defaultTiming)
@@ -149,7 +149,6 @@ export default function OnboardingUploadWizard({
       setStep(0)
       setFile(null)
       setParseResult(null)
-      setError('')
       setAudienceSelection('BOTH')
       setTiming(defaultTiming)
       setStatus('DRAFT')
@@ -164,7 +163,6 @@ export default function OnboardingUploadWizard({
   async function handleFileSelect(selectedFile) {
     if (!selectedFile) return
     setFile(selectedFile)
-    setError('')
     setIsParsing(true)
 
     try {
@@ -172,7 +170,7 @@ export default function OnboardingUploadWizard({
       setParseResult(result)
       setStep(1)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse document')
+      notify.error(err, 'Failed to parse document')
       setParseResult(null)
     } finally {
       setIsParsing(false)
@@ -182,14 +180,13 @@ export default function OnboardingUploadWizard({
   async function handlePublish() {
     if (!parseResult) return
     if (status === 'PUBLISHED' && (!showFrom || !showUntil)) {
-      setError('Please choose a survey start and end time before publishing.')
+      notify.error('Please choose a survey start and end time before publishing.')
       return
     }
     if (showFrom && showUntil && showFrom > showUntil) {
-      setError('Survey start time must be on or before the end time.')
+      notify.error('Survey start time must be on or before the end time.')
       return
     }
-    setError('')
     setIsPublishing(true)
 
     try {
@@ -207,7 +204,7 @@ export default function OnboardingUploadWizard({
       onPublished?.()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish')
+      notify.error(err, 'Failed to publish')
     } finally {
       setIsPublishing(false)
     }
@@ -273,12 +270,6 @@ export default function OnboardingUploadWizard({
             </div>
           ))}
         </div>
-
-        {error && (
-          <div className="mb-4 rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-            {error}
-          </div>
-        )}
 
         {step === 0 && (
           <div className="space-y-4">

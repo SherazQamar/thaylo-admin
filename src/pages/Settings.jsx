@@ -10,9 +10,10 @@ import PasswordInput from '../components/PasswordInput'
 import {
   changeAdminPassword,
   fetchAdminProfile,
-  getApiErrorMessage,
   updateAdminProfile,
 } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useAuthStore } from '../stores/auth.store'
 
 const NOTIFICATIONS = [
@@ -150,7 +151,6 @@ function AccountInformation({ profile, onSaved }) {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState(null)
-  const [error, setError] = useState(null)
 
   useEffect(() => {
     setName(profile?.name ?? '')
@@ -168,12 +168,11 @@ function AccountInformation({ profile, onSaved }) {
         })
       }
       setMessage('Profile saved.')
-      setError(null)
       onSaved?.()
     },
     onError: (err) => {
       setMessage(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -184,20 +183,18 @@ function AccountInformation({ profile, onSaved }) {
       setNewPassword('')
       setConfirmPassword('')
       setMessage('Password updated.')
-      setError(null)
     },
     onError: (err) => {
       setMessage(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
   function handleSaveProfile(e) {
     e.preventDefault()
     setMessage(null)
-    setError(null)
     if (!name.trim()) {
-      setError('Full name is required.')
+      notify.error('Full name is required.')
       return
     }
     profileMutation.mutate({ name: name.trim() })
@@ -206,13 +203,12 @@ function AccountInformation({ profile, onSaved }) {
   function handleSavePassword(e) {
     e.preventDefault()
     setMessage(null)
-    setError(null)
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Fill all password fields to change your password.')
+      notify.error('Fill all password fields to change your password.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('New password and confirmation do not match.')
+      notify.error('New password and confirmation do not match.')
       return
     }
     passwordMutation.mutate({
@@ -293,7 +289,6 @@ function AccountInformation({ profile, onSaved }) {
       </form>
 
       {message ? <p className="mt-3 text-[#00CED1] text-xs">{message}</p> : null}
-      {error ? <p className="mt-3 text-[#FF6F6F] text-xs">{error}</p> : null}
     </Card>
   )
 }
@@ -366,6 +361,7 @@ export default function Settings() {
     queryKey: ['admin', 'profile'],
     queryFn: fetchAdminProfile,
   })
+  useNotifyError(profileQuery.error, profileQuery.isError)
 
   const profile = useMemo(
     () => profileQuery.data ?? user ?? null,
@@ -382,9 +378,7 @@ export default function Settings() {
       </div>
 
       {profileQuery.isError ? (
-        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
-          {getApiErrorMessage(profileQuery.error)}
-        </div>
+        <p className="mt-4 text-white/50 text-sm">Unable to load profile right now.</p>
       ) : null}
 
       <div className="flex flex-col gap-5 mt-6">

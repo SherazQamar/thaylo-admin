@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  getApiErrorMessage,
   setStaffInvitePassword,
   validateResetToken,
 } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import logo from '../assets/logo.png'
 import PasswordInput from '../components/PasswordInput'
 
@@ -19,7 +20,6 @@ export default function SetStaffPassword() {
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [formError, setFormError] = useState(null)
 
   const tokenQuery = useQuery({
     queryKey: ['validate-staff-setup-token', token],
@@ -27,11 +27,11 @@ export default function SetStaffPassword() {
     enabled: token.length > 0,
     retry: false,
   })
-
   const role = tokenQuery.data?.role
   const tokenMissing = !token
   const tokenValidating = !tokenMissing && tokenQuery.isLoading
   const tokenInvalid = !tokenMissing && !tokenQuery.isLoading && tokenQuery.isError
+  useNotifyError(tokenQuery.error, tokenInvalid)
   const tokenWrongRole =
     !tokenMissing &&
     !tokenQuery.isLoading &&
@@ -60,12 +60,8 @@ export default function SetStaffPassword() {
     onSuccess: () => {
       navigate('/?setup=1', { replace: true })
     },
-    onError: (err) => setFormError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
-
-  useEffect(() => {
-    setFormError(null)
-  }, [newPassword, confirmPassword])
 
   return (
     <div
@@ -141,7 +137,7 @@ export default function SetStaffPassword() {
               <p className="text-white/50 text-sm" role="alert">
                 {tokenWrongRole
                   ? 'This setup link is for a different portal. Wayfinders should use the public set-password page.'
-                  : getApiErrorMessage(tokenQuery.error)}
+                  : 'This invitation link is invalid or has expired.'}
               </p>
               <p className="text-white/40 text-xs">
                 Setup links expire after a limited time. Ask a Super Admin to resend the invitation.
@@ -154,7 +150,6 @@ export default function SetStaffPassword() {
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault()
-                setFormError(null)
                 setupMutation.mutate()
               }}
             >
@@ -186,8 +181,6 @@ export default function SetStaffPassword() {
                   className="w-full px-4 py-3 rounded-full bg-white/[0.05] text-white text-sm outline-none border border-transparent focus:border-[#00CED1]/40"
                 />
               </label>
-
-              {formError ? <p className="text-xs text-[#FF6F6F]">{formError}</p> : null}
 
               <button
                 type="submit"

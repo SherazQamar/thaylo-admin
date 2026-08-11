@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import {
   fetchSystemLogs,
   resolveSystemLog,
@@ -139,7 +140,6 @@ export default function SecurityLogs() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('open')
   const [message, setMessage] = useState(null)
-  const [errorMessage, setErrorMessage] = useState(null)
 
   const listParams = useMemo(
     () => ({
@@ -155,17 +155,17 @@ export default function SecurityLogs() {
     queryKey: systemLogQueryKeys.list(listParams),
     queryFn: () => fetchSystemLogs(listParams),
   })
+  useNotifyError(error, isError)
 
   const resolveMutation = useMutation({
     mutationFn: (id) => resolveSystemLog(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: systemLogQueryKeys.all })
       setMessage('Log marked as resolved.')
-      setErrorMessage(null)
     },
     onError: (err) => {
-      setErrorMessage(getApiErrorMessage(err))
       setMessage(null)
+      notify.error(err)
     },
   })
 
@@ -231,18 +231,15 @@ export default function SecurityLogs() {
           </select>
         </div>
 
-        {(message || errorMessage || isError) && (
-          <div
-            className={
-              'rounded-2xl border px-4 py-3 text-sm ' +
-              (errorMessage || isError
-                ? 'border-[#FF7B7B]/30 bg-[#FF7B7B]/10 text-[#FF7B7B]'
-                : 'border-[#00CED1]/30 bg-[#00CED1]/10 text-[#00CED1]')
-            }
-          >
-            {errorMessage ?? (isError ? getApiErrorMessage(error) : message)}
+        {message ? (
+          <div className="rounded-2xl border border-[#00CED1]/30 bg-[#00CED1]/10 px-4 py-3 text-sm text-[#00CED1]">
+            {message}
           </div>
-        )}
+        ) : null}
+
+        {isError && !isLoading ? (
+          <p className="text-white/50 text-sm">Unable to load logs right now.</p>
+        ) : null}
 
         <div className="rounded-2xl border border-white/10 bg-[#313044] overflow-hidden">
           {isLoading ? (

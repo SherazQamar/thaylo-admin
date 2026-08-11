@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useAuthStore } from '../stores/auth.store'
 import {
   createSupportTicket,
@@ -33,7 +34,6 @@ export default function SupportCenter() {
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [priority, setPriority] = useState('MEDIUM')
-  const [formError, setFormError] = useState(null)
   const [formOk, setFormOk] = useState(null)
 
   const params = { page, limit: 10, status: status || undefined }
@@ -41,6 +41,7 @@ export default function SupportCenter() {
     queryKey: platformQueryKeys.tickets(params),
     queryFn: () => fetchSupportTickets(params),
   })
+  useNotifyError(ticketsQuery.error, ticketsQuery.isError)
 
   const createMutation = useMutation({
     mutationFn: createSupportTicket,
@@ -49,12 +50,11 @@ export default function SupportCenter() {
       setMessage('')
       setPriority('MEDIUM')
       setFormOk('Ticket created.')
-      setFormError(null)
       await queryClient.invalidateQueries({ queryKey: ['super-admin', 'support-tickets'] })
     },
     onError: (err) => {
       setFormOk(null)
-      setFormError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -63,6 +63,7 @@ export default function SupportCenter() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['super-admin', 'support-tickets'] })
     },
+    onError: (err) => notify.error(err),
   })
 
   const tickets = ticketsQuery.data?.items ?? []
@@ -100,8 +101,8 @@ export default function SupportCenter() {
             <p className="text-white/50 text-sm py-8 text-center">Loading tickets…</p>
           ) : null}
           {ticketsQuery.isError ? (
-            <p className="text-[#FF6F6F] text-sm py-8 text-center">
-              {getApiErrorMessage(ticketsQuery.error)}
+            <p className="text-white/50 text-sm py-8 text-center">
+              Unable to load tickets right now.
             </p>
           ) : null}
           {!ticketsQuery.isLoading && tickets.length === 0 ? (
@@ -168,7 +169,7 @@ export default function SupportCenter() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!subject.trim() || !message.trim()) {
-                setFormError('Subject and message are required.')
+                notify.error('Subject and message are required.')
                 return
               }
               createMutation.mutate({
@@ -208,11 +209,9 @@ export default function SupportCenter() {
                 High
               </option>
             </select>
-            {(formError || formOk) && (
-              <p className={`text-xs ${formError ? 'text-[#FF6F6F]' : 'text-[#00CED1]'}`}>
-                {formError ?? formOk}
-              </p>
-            )}
+            {formOk ? (
+              <p className="text-xs text-[#00CED1]">{formOk}</p>
+            ) : null}
             <button
               type="submit"
               disabled={createMutation.isPending}
