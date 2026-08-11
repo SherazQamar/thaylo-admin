@@ -4,7 +4,8 @@ import { CheckCircle2, Cpu, Play, Save, Volume2 } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
 import PasswordInput from '../components/PasswordInput'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import {
   AI_SETTINGS_FIELD_RANGES,
   clampValue,
@@ -181,6 +182,7 @@ function buildFormState(settings) {
     heygenAvatarId: settings?.avatar?.heygenAvatarId ?? '',
     heygenVoiceId: settings?.avatar?.heygenVoiceId ?? '',
     heygenApiKey: settings?.avatar?.heygenApiKey ?? '',
+    useElevenLabsVoice: Boolean(settings?.avatar?.useElevenLabsVoice),
     onboardingTemperature: clampValue(
       settings?.llm?.onboardingTemperature ?? llm.onboardingTemperature.default,
       llm.onboardingTemperature.min,
@@ -219,10 +221,11 @@ export default function AiControl() {
   const [settingsTab, setSettingsTab] = useState("instructor")
   const voicePreviewRef = useRef(null)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isError } = useQuery({
     queryKey: aiSettingsQueryKeys.detail(),
     queryFn: fetchAiSettings,
   })
+  useNotifyError(error, isError)
 
   const {
     data: voiceCatalog = FREE_TIER_FALLBACK_CATALOG,
@@ -322,12 +325,10 @@ export default function AiControl() {
         type: 'success',
         message: 'Settings saved successfully. AI Instructor and Bloom Buddy will use these values.',
       })
+      notify.success('Settings saved successfully.')
     },
     onError: (err) => {
-      setSaveFeedback({
-        type: 'error',
-        message: getApiErrorMessage(err, 'Unable to save AI settings.'),
-      })
+      notify.error(err, 'Unable to save AI settings.')
     },
   })
 
@@ -371,6 +372,7 @@ export default function AiControl() {
         heygenAvatarId: form.heygenAvatarId.trim(),
         heygenVoiceId: form.heygenVoiceId.trim(),
         heygenApiKey: form.heygenApiKey.trim(),
+        useElevenLabsVoice: Boolean(form.useElevenLabsVoice),
       },
       llm: {
         onboardingTemperature: form.onboardingTemperature,
@@ -529,7 +531,7 @@ export default function AiControl() {
       })
       setStatusMessage('Voice preview played using browser TTS.')
     } catch (err) {
-      setStatusMessage(await getAiVoiceTestErrorMessage(err))
+      notify.error(await getAiVoiceTestErrorMessage(err))
     } finally {
       setIsTestingVoice(false)
       setVoiceTestPhase(null)
@@ -595,9 +597,9 @@ export default function AiControl() {
           </button>
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm">
-            {getApiErrorMessage(error, 'Unable to load AI settings.')}
+        {isError && (
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/60 text-sm">
+            Unable to load AI settings right now.
           </div>
         )}
 
@@ -679,7 +681,7 @@ export default function AiControl() {
 
         <Card
           title="Voice (TTS fallback / onboarding only)"
-          description="Used when LiveAvatar is OFF, or if the avatar fails. These ElevenLabs settings do NOT control live class avatar speech."
+          description="Used for onboarding, Bloom Buddy, and when LiveAvatar is off. Also used in live class when “Use ElevenLabs voice” is checked below."
         >
           <div className="grid gap-5">
             <div>
@@ -937,7 +939,7 @@ export default function AiControl() {
 
         <Card
           title="Live class avatar (HeyGen LiveAvatar)"
-          description="Primary classroom voice + lip-sync. When this is on, LiveAvatar owns class speech. Super Admin Voice/ElevenLabs settings above are ignored for the avatar path."
+          description="LiveAvatar shows the tutor face. Unchecked = LiveAvatar voice. Checked = Super Admin ElevenLabs voice with LiveAvatar lip-sync."
         >
           <div className="space-y-4">
             <label className="block space-y-1.5">
@@ -971,16 +973,39 @@ export default function AiControl() {
                       type="text"
                       value={form.heygenVoiceId}
                       onChange={(e) => updateField('heygenVoiceId', e.target.value)}
-                      placeholder="Unused — avatar default voice"
+                      placeholder={
+                        form.useElevenLabsVoice
+                          ? 'Unused — ElevenLabs voice selected'
+                          : 'Unused — avatar default voice'
+                      }
                       disabled
                       className="w-full rounded-xl border border-white/10 bg-[#111023] px-3 py-2.5 text-sm text-white/40 outline-none opacity-60"
                     />
                     <p className="text-[11px] text-white/40 leading-relaxed">
-                      Class uses the voice already assigned to this LiveAvatar avatar (low-latency flash model).
-                      Super Admin ElevenLabs Voice settings are not used in live class.
+                      {form.useElevenLabsVoice
+                        ? 'LiveAvatar Voice ID is unused. Class speech uses the ElevenLabs voice from Voice settings above.'
+                        : 'Class uses the voice already assigned to this LiveAvatar avatar (low-latency flash model).'}
                     </p>
                   </label>
                 </div>
+                <label className="flex items-start gap-3 cursor-pointer select-none rounded-xl border border-white/10 bg-[#111023] px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.useElevenLabsVoice)}
+                    onChange={(e) => updateField('useElevenLabsVoice', e.target.checked)}
+                    className="mt-0.5 size-4 rounded border-white/30 bg-[#313044] accent-[#00CED1]"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-white">Use ElevenLabs voice</span>
+                    <span className="mt-1 block text-[11px] leading-relaxed text-white/45">
+                      {form.useElevenLabsVoice
+                        ? form.engine !== 'elevenlabs'
+                          ? 'Switch Voice engine above to ElevenLabs, then save. LiveAvatar still shows the face.'
+                          : `Avatar stays LiveAvatar. Speech uses ${form.elevenLabsVoiceName || 'the selected ElevenLabs voice'} (${form.elevenLabsVoiceId || 'no voice id'}).`
+                        : 'Leave unchecked to use both the LiveAvatar face and its default LiveAvatar voice.'}
+                    </span>
+                  </span>
+                </label>
                 <label className="block space-y-1.5">
                   <span className="text-xs uppercase tracking-wide text-white/45">LiveAvatar API key</span>
                   <PasswordInput
@@ -1083,18 +1108,14 @@ export default function AiControl() {
         </Card>
 
         <div className="flex flex-col items-end gap-3">
-          {saveFeedback && (
+          {saveFeedback?.type === 'success' && (
             <div
               className={
                 'w-full rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ' +
-                (saveFeedback.type === 'success'
-                  ? 'border-[#60D624]/30 bg-[#60D624]/10 text-[#60D624]'
-                  : 'border-[#FF7B7B]/30 bg-[#FF7B7B]/10 text-[#FF7B7B]')
+                'border-[#60D624]/30 bg-[#60D624]/10 text-[#60D624]'
               }
             >
-              {saveFeedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-              ) : null}
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{saveFeedback.message}</span>
             </div>
           )}

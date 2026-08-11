@@ -4,7 +4,7 @@ import { Send, ChevronDown, Search, Flag, Info } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
 import { adminQueryKeys, fetchAdminReports } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 
 const RANGE_OPTIONS = [
   { key: '7d', label: 'Last 7 Days' },
@@ -525,6 +525,7 @@ export default function Reports() {
     queryKey: adminQueryKeys.reports({ range }),
     queryFn: () => fetchAdminReports({ range }),
   })
+  useNotifyError(reportsQuery.error, reportsQuery.isError)
 
   const data = reportsQuery.data
 
@@ -602,9 +603,7 @@ export default function Reports() {
       </div>
 
       {reportsQuery.isError && (
-        <div className="mt-4 rounded-xl px-4 py-3 text-sm bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20">
-          {getApiErrorMessage(reportsQuery.error)}
-        </div>
+        <p className="mt-4 text-white/50 text-sm">Unable to load reports right now.</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-5">

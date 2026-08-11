@@ -5,7 +5,7 @@ import { ArrowLeft, UserPlus } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
 import AssignChildModal from '../components/AssignChildModal'
 import { adminQueryKeys, fetchStudentById } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { formatPhoneDisplay } from '../lib/phone'
 import { formatStudentName } from '../lib/student'
 
@@ -40,6 +40,7 @@ export default function StudentDetail() {
     queryFn: () => fetchStudentById(studentId),
     enabled: Number.isFinite(studentId) && studentId > 0,
   })
+  useNotifyError(studentQuery.error, studentQuery.isError)
 
   const student = studentQuery.data
   const displayName = student ? formatStudentName(student) : ''
@@ -64,8 +65,8 @@ export default function StudentDetail() {
         <p className="text-white/50 text-sm py-8">Loading student details…</p>
       )}
       {studentQuery.isError && (
-        <p className="text-[#FF6F6F] text-sm py-8">
-          {getApiErrorMessage(studentQuery.error)}
+        <p className="text-white/50 text-sm py-8">
+          Unable to load student details right now.
         </p>
       )}
 

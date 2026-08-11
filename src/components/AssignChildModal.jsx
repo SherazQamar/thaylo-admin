@@ -8,7 +8,8 @@ import {
   fetchStudents,
   fetchWayfinders,
 } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
+import { notify } from '../lib/notify'
 
 const SELECT_PAGE_SIZE = 100
 
@@ -69,7 +70,6 @@ export default function AssignChildModal({
   const isReassign = mode === 'reassign'
   const [wayfinderId, setWayfinderId] = useState('')
   const [childId, setChildId] = useState('')
-  const [error, setError] = useState('')
 
   const wayfindersQuery = useQuery({
     queryKey: adminQueryKeys.wayfinders({ page: 1, limit: SELECT_PAGE_SIZE }),
@@ -93,6 +93,10 @@ export default function AssignChildModal({
       fetchStudents({ page: 1, limit: SELECT_PAGE_SIZE, assignment: 'all' }),
     enabled: open && isReassign,
   })
+
+  useNotifyError(wayfindersQuery.error, open && wayfindersQuery.isError)
+  useNotifyError(parentsQuery.error, open && !isReassign && parentsQuery.isError)
+  useNotifyError(studentsQuery.error, open && isReassign && studentsQuery.isError)
 
   const childOptions = useMemo(() => {
     if (isReassign) {
@@ -130,7 +134,6 @@ export default function AssignChildModal({
     if (!open) return
     setWayfinderId(defaultWayfinderId ? String(defaultWayfinderId) : '')
     setChildId(defaultChildId ? String(defaultChildId) : '')
-    setError('')
   }, [open, defaultWayfinderId, defaultChildId])
 
   const assignMutation = useMutation({
@@ -145,7 +148,7 @@ export default function AssignChildModal({
       onSuccess?.()
       onClose()
     },
-    onError: (err) => setError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   if (!open) return null
@@ -157,7 +160,6 @@ export default function AssignChildModal({
 
   function handleSubmit(e) {
     e.preventDefault()
-    setError('')
     assignMutation.mutate({
       wayfinderId: Number(wayfinderId),
       childId: Number(childId),
@@ -222,8 +224,6 @@ export default function AssignChildModal({
               disabled={isLoading || !!defaultChildId || childOptions.length === 0}
             />
           </Field>
-
-          {error && <p className="text-xs text-[#FF6F6F]">{error}</p>}
 
           <div className="grid grid-cols-2 gap-4 pt-2">
             <button

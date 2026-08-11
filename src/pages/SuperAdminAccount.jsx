@@ -9,9 +9,10 @@ import { logoutAdmin } from '../lib/auth-session'
 import {
   changeAdminPassword,
   fetchAdminProfile,
-  getApiErrorMessage,
   updateAdminProfile,
 } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useAuthStore } from '../stores/auth.store'
 
 function Card({ title, children }) {
@@ -33,12 +34,12 @@ export default function SuperAdminAccount() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState(null)
-  const [error, setError] = useState(null)
 
   const profileQuery = useQuery({
     queryKey: ['super-admin', 'profile'],
     queryFn: fetchAdminProfile,
   })
+  useNotifyError(profileQuery.error, profileQuery.isError)
 
   const profile = useMemo(
     () => profileQuery.data ?? user ?? null,
@@ -61,12 +62,11 @@ export default function SuperAdminAccount() {
         })
       }
       setMessage('Profile saved.')
-      setError(null)
       void profileQuery.refetch()
     },
     onError: (err) => {
       setMessage(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -77,11 +77,10 @@ export default function SuperAdminAccount() {
       setNewPassword('')
       setConfirmPassword('')
       setMessage('Password updated.')
-      setError(null)
     },
     onError: (err) => {
       setMessage(null)
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
@@ -103,7 +102,7 @@ export default function SuperAdminAccount() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!name.trim()) {
-                setError('Full name is required.')
+                notify.error('Full name is required.')
                 return
               }
               profileMutation.mutate({ name: name.trim() })
@@ -142,11 +141,11 @@ export default function SuperAdminAccount() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!currentPassword || !newPassword || !confirmPassword) {
-                setError('Fill all password fields.')
+                notify.error('Fill all password fields.')
                 return
               }
               if (newPassword !== confirmPassword) {
-                setError('New password and confirmation do not match.')
+                notify.error('New password and confirmation do not match.')
                 return
               }
               passwordMutation.mutate({ currentPassword, newPassword, confirmPassword })
@@ -186,11 +185,9 @@ export default function SuperAdminAccount() {
             </button>
           </form>
 
-          {(message || error) && (
-            <p className={`mt-3 text-xs ${error ? 'text-[#FF6F6F]' : 'text-[#00CED1]'}`}>
-              {error ?? message}
-            </p>
-          )}
+          {message ? (
+            <p className="mt-3 text-[#00CED1] text-xs">{message}</p>
+          ) : null}
         </Card>
 
         <Card title="Session">

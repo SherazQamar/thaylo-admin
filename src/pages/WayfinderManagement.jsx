@@ -8,7 +8,8 @@ import AssignChildModal from '../components/AssignChildModal'
 import WayfinderStudentsModal from '../components/WayfinderStudentsModal'
 import ListPagination from '../components/ListPagination'
 import { adminQueryKeys, createWayfinder, fetchWayfinders, resendWayfinderInvite } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { formatPhoneDisplay } from '../lib/phone'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import { hiringRegionByCode } from '../lib/wayfinder-hiring-regions'
@@ -180,6 +181,7 @@ function WayfinderListSection({
   resendingId,
   isResending,
 }) {
+  useNotifyError(error, isError)
   const borderClass =
     accent === 'priority' ? 'border border-[#FFC542]/25' : 'border border-transparent'
 
@@ -199,7 +201,7 @@ function WayfinderListSection({
         <p className="text-white/50 text-sm py-8 text-center">Loading wayfinders…</p>
       )}
       {isError && (
-        <p className="text-[#FF6F6F] text-sm py-8 text-center">{getApiErrorMessage(error)}</p>
+        <p className="text-white/50 text-sm py-8 text-center">Unable to load wayfinders right now.</p>
       )}
       {!isLoading && !isError && wayfinders.length === 0 && (
         <p className="text-white/50 text-sm py-8 text-center">{emptyMessage}</p>
@@ -250,10 +252,8 @@ export default function WayfinderManagement() {
   const [unassignedPage, setUnassignedPage] = useState(1)
   const [directoryPage, setDirectoryPage] = useState(1)
   const [onlinePage, setOnlinePage] = useState(1)
-  const [createError, setCreateError] = useState('')
   const [resendingId, setResendingId] = useState(null)
   const [actionMessage, setActionMessage] = useState(null)
-  const [actionError, setActionError] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search)
   const searchParam = debouncedSearch || undefined
@@ -305,25 +305,22 @@ export default function WayfinderManagement() {
     mutationFn: createWayfinder,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'wayfinders'] })
-      setCreateError('')
       setAddOpen(false)
-      setActionError(null)
       setActionMessage('Wayfinder created and invitation email sent.')
     },
-    onError: (err) => setCreateError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   const resendInviteMutation = useMutation({
     mutationFn: resendWayfinderInvite,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'wayfinders'] })
-      setActionError(null)
       setActionMessage('A new setup link was emailed to the wayfinder.')
       setResendingId(null)
     },
     onError: (err) => {
       setActionMessage(null)
-      setActionError(getApiErrorMessage(err))
+      notify.error(err)
       setResendingId(null)
     },
   })
@@ -341,7 +338,6 @@ export default function WayfinderManagement() {
     },
     onResendInvite: (w) => {
       setActionMessage(null)
-      setActionError(null)
       setResendingId(w.id)
       resendInviteMutation.mutate(w.id)
     },
@@ -367,18 +363,11 @@ export default function WayfinderManagement() {
     </div>
   )
 
-  const actionBanner =
-    actionMessage || actionError ? (
-      <div
-        className={`mb-4 rounded-xl px-4 py-3 text-sm ${
-          actionError
-            ? 'bg-[#FF6F6F]/10 text-[#FF6F6F] border border-[#FF6F6F]/20'
-            : 'bg-[#00CED1]/10 text-[#00CED1] border border-[#00CED1]/20'
-        }`}
-      >
-        {actionError ?? actionMessage}
-      </div>
-    ) : null
+  const actionBanner = actionMessage ? (
+    <div className="mb-4 rounded-xl px-4 py-3 text-sm bg-[#00CED1]/10 text-[#00CED1] border border-[#00CED1]/20">
+      {actionMessage}
+    </div>
+  ) : null
 
   return (
     <AdminLayout title="Wayfinder Management" userSubtitle="Super Admin">
@@ -519,13 +508,9 @@ export default function WayfinderManagement() {
 
       <AddWayfinderModal
         open={addOpen}
-        onClose={() => {
-          setAddOpen(false)
-          setCreateError('')
-        }}
+        onClose={() => setAddOpen(false)}
         onSubmit={(payload) => createMutation.mutateAsync(payload)}
         isSubmitting={createMutation.isPending}
-        error={createError}
       />
 
       <AssignChildModal

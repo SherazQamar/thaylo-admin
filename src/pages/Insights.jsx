@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Send, Search } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import InfoTooltip from '../components/InfoTooltip'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { adminQueryKeys, fetchAdminAlerts } from '../lib/admin-api'
 import {
   fetchSuperAdminInsights,
@@ -317,6 +317,7 @@ function ReportView() {
     queryKey: superAdminQueryKeys.insights(params),
     queryFn: () => fetchSuperAdminInsights(params),
   })
+  useNotifyError(insightsQuery.error, insightsQuery.isError)
 
   const data = insightsQuery.data
   const startedCount = (data?.skillFamilies ?? []).reduce(
@@ -381,8 +382,8 @@ function ReportView() {
         <p className="text-white/50 text-sm mt-6">Loading insights…</p>
       )}
       {insightsQuery.isError && (
-        <p className="text-[#FF7B7B] text-sm mt-6">
-          {getApiErrorMessage(insightsQuery.error)}
+        <p className="text-white/50 text-sm mt-6">
+          Unable to load insights right now.
         </p>
       )}
 
@@ -466,6 +467,7 @@ function AlertView() {
     queryFn: fetchAdminAlerts,
     refetchInterval: 30_000,
   })
+  useNotifyError(alertsQuery.error, alertsQuery.isError)
 
   const allAlerts = useMemo(() => {
     const rows = [
@@ -564,7 +566,7 @@ function AlertView() {
         <p className="text-white/50 text-sm mt-6">Loading alerts…</p>
       ) : null}
       {alertsQuery.isError ? (
-        <p className="text-[#FF6F6F] text-sm mt-6">{getApiErrorMessage(alertsQuery.error)}</p>
+        <p className="text-white/50 text-sm mt-6">Unable to load alerts right now.</p>
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">

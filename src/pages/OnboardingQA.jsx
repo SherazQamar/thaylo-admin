@@ -6,7 +6,8 @@ import ListPagination from '../components/ListPagination'
 import OnboardingUploadWizard from '../components/OnboardingUploadWizard'
 import OnboardingWalkthroughModal from '../components/OnboardingWalkthroughModal'
 import OnboardingResultsModal from '../components/OnboardingResultsModal'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { notify } from '../lib/notify'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import {
   ONBOARDING_AUDIENCE_LABELS,
@@ -171,7 +172,6 @@ export default function OnboardingQA() {
   const [editingId, setEditingId] = useState(null)
   const [viewItem, setViewItem] = useState(null)
   const [resultsTarget, setResultsTarget] = useState(null)
-  const [formError, setFormError] = useState('')
 
   const listParams = useMemo(
     () => ({
@@ -188,6 +188,7 @@ export default function OnboardingQA() {
     queryKey: onboardingQueryKeys.list(listParams),
     queryFn: () => fetchOnboardingWalkthroughs(listParams),
   })
+  useNotifyError(error, isError)
 
   const { data: editingItem, isFetching: isLoadingEdit } = useQuery({
     queryKey: onboardingQueryKeys.detail(editingId),
@@ -201,9 +202,8 @@ export default function OnboardingQA() {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'onboarding-walkthroughs'] })
       setModalOpen(false)
       setEditingId(null)
-      setFormError('')
     },
-    onError: (err) => setFormError(getApiErrorMessage(err)),
+    onError: (err) => notify.error(err),
   })
 
   const deleteMutation = useMutation({
@@ -223,7 +223,6 @@ export default function OnboardingQA() {
   function openEdit(item) {
     const editId = item.studentWalkthroughId ?? item.parentWalkthroughId ?? item.id
     setEditingId(editId)
-    setFormError('')
     setModalOpen(true)
   }
 
@@ -374,9 +373,7 @@ export default function OnboardingQA() {
           </div>
 
           {isError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm mb-4">
-              {getApiErrorMessage(error)}
-            </div>
+            <p className="text-white/50 text-sm mb-4">Unable to load onboarding Q&amp;A right now.</p>
           )}
 
           <div className="overflow-x-auto">
@@ -537,11 +534,9 @@ export default function OnboardingQA() {
         onClose={() => {
           setModalOpen(false)
           setEditingId(null)
-          setFormError('')
         }}
         onSubmit={handleSubmit}
         isSubmitting={updateMutation.isPending || isLoadingEdit}
-        error={formError}
       />
 
       <ViewContentModal

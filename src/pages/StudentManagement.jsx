@@ -5,7 +5,7 @@ import { Search, ChevronRight } from 'lucide-react'
 import AdminLayout from '../components/AdminLayout'
 import ListPagination from '../components/ListPagination'
 import { adminQueryKeys, fetchStudents } from '../lib/admin-api'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { formatStudentName } from '../lib/student'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 
@@ -135,6 +135,7 @@ function StudentListSection({
   onOpenStudent,
   searchSlot,
 }) {
+  useNotifyError(error, isError)
   const borderClass =
     accent === 'priority'
       ? 'border border-[#FFC542]/25'
@@ -156,8 +157,8 @@ function StudentListSection({
         <p className="text-white/50 text-sm py-8 text-center">Loading students…</p>
       )}
       {isError && (
-        <p className="text-[#FF6F6F] text-sm py-8 text-center">
-          {getApiErrorMessage(error)}
+        <p className="text-white/50 text-sm py-8 text-center">
+          Unable to load students right now.
         </p>
       )}
       {!isLoading && !isError && students.length === 0 && (

@@ -3,10 +3,10 @@ import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   fetchAdminProfile,
-  getApiErrorMessage,
   isAdminPortalRole,
   loginAdmin,
 } from '../lib/auth-api'
+import { notify } from '../lib/notify'
 import { getAdminToken } from '../lib/auth-cookies'
 import {
   getHomePathForRole,
@@ -99,7 +99,6 @@ export default function AdminSignIn() {
   const user = useAuthStore((state) => state.user)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
   const [modal, setModal] = useState('none') // 'none' | 'reset' | 'verification' | 'new-password'
   const [resetEmail, setResetEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -168,13 +167,12 @@ export default function AdminSignIn() {
       navigate(getHomePathForRole(loggedInUser.role))
     },
     onError: (err) => {
-      setError(getApiErrorMessage(err))
+      notify.error(err)
     },
   })
 
   function handleSubmit(e) {
     e.preventDefault()
-    setError(null)
     loginMutation.mutate()
   }
 
@@ -366,12 +364,6 @@ export default function AdminSignIn() {
                     Forget Password?
                   </button>
                 </div>
-
-                {error && (
-                  <p className="text-sm text-red-400 text-center" role="alert">
-                    {error}
-                  </p>
-                )}
 
                 <button
                   type="submit"

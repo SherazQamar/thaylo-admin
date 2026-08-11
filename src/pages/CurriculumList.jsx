@@ -5,7 +5,7 @@ import { Plus, Search, Pencil, Trash2, BookOpen, Sparkles, Info } from 'lucide-r
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
 import CurriculumUploadWizard from '../components/CurriculumUploadWizard'
-import { getApiErrorMessage } from '../lib/auth-api'
+import { useNotifyError } from '../hooks/useNotifyError'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import {
   CURRICULUM_BETA_INFO_MESSAGE,
@@ -67,6 +67,7 @@ export default function CurriculumList() {
     queryKey: curriculumQueryKeys.list(listParams),
     queryFn: () => fetchCurricula(listParams),
   })
+  useNotifyError(error, isError)
 
   const deleteMutation = useMutation({
     mutationFn: deleteCurriculum,
@@ -178,9 +179,7 @@ export default function CurriculumList() {
           </div>
 
           {isError && (
-            <div className="rounded-2xl border border-[#FF7B7B]/30 bg-[#FF7B7B]/10 px-4 py-3 text-[#FF7B7B] text-sm mb-4">
-              {getApiErrorMessage(error)}
-            </div>
+            <p className="text-white/50 text-sm mb-4">Unable to load curricula right now.</p>
           )}
 
           <div className="overflow-x-auto">
