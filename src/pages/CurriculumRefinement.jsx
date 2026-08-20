@@ -8,6 +8,7 @@ import CurriculumLessonPreview from '../components/CurriculumLessonPreview'
 import CurriculumClassPreviewModal from '../components/CurriculumClassPreviewModal'
 import CurriculumAiPlanPreviewModal from '../components/CurriculumAiPlanPreviewModal'
 import CurriculumRefinementChat from '../components/CurriculumRefinementChat'
+import LessonAnswerKeyModal from '../components/LessonAnswerKeyModal'
 import { notify } from '../lib/notify'
 import { useNotifyError } from '../hooks/useNotifyError'
 import {
@@ -58,6 +59,8 @@ export default function CurriculumRefinement() {
   const [previewLessonIndex, setPreviewLessonIndex] = useState(0)
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
   const [publishLoadingMessage, setPublishLoadingMessage] = useState('')
+  const [answerKeyOpen, setAnswerKeyOpen] = useState(false)
+  const [answerKeyLessonKey, setAnswerKeyLessonKey] = useState('')
 
   const openClassPreview = (lessonIndex = 0) => {
     setPreviewLessonIndex(lessonIndex)
@@ -67,6 +70,11 @@ export default function CurriculumRefinement() {
   const openAiPlanPreview = (lessonIndex = 0) => {
     setPreviewLessonIndex(lessonIndex)
     setAiPlanPreviewOpen(true)
+  }
+
+  const openAnswerKey = (lessonKey) => {
+    setAnswerKeyLessonKey(lessonKey)
+    setAnswerKeyOpen(true)
   }
 
   const breadcrumbs = useMemo(
@@ -232,7 +240,8 @@ export default function CurriculumRefinement() {
         )}
 
         {data && (
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
             <div
               className="xl:col-span-3 rounded-2xl p-5 lg:p-6"
               style={{ backgroundColor: '#313044' }}
@@ -241,6 +250,7 @@ export default function CurriculumRefinement() {
                 scriptJson={data.scriptJson}
                 onPreviewClass={openClassPreview}
                 onPreviewAiPlan={openAiPlanPreview}
+                onPreviewAnswerKey={openAnswerKey}
                 status={data.status}
                 isArchived={isArchived}
                 statusPending={isPublishing}
@@ -270,6 +280,7 @@ export default function CurriculumRefinement() {
               )}
             </div>
           </div>
+          </div>
         )}
       </div>
 
@@ -292,6 +303,13 @@ export default function CurriculumRefinement() {
           initialLessonIndex={previewLessonIndex}
         />
       )}
+
+      <LessonAnswerKeyModal
+        open={answerKeyOpen}
+        onClose={() => setAnswerKeyOpen(false)}
+        curriculumId={curriculumId}
+        lessonKey={answerKeyLessonKey}
+      />
 
       <ConfirmModal
         open={publishConfirmOpen}

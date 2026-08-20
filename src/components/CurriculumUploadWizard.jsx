@@ -6,9 +6,10 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react'
-import {
+  import {
   CURRICULUM_BETA_INFO_MESSAGE,
   CURRICULUM_BETA_LESSON_LIMIT,
+  CURRICULUM_MIN_LESSON_LIMIT,
   createCurriculumFromParsed,
   parseCurriculumDocument,
 } from '../lib/curriculum-api'
@@ -124,6 +125,7 @@ function LessonPreviewCard({ lesson }) {
 export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
   const [step, setStep] = useState(0)
   const [file, setFile] = useState(null)
+  const [lessonLimit, setLessonLimit] = useState(CURRICULUM_MIN_LESSON_LIMIT)
   const [parseResult, setParseResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loadingPhase, setLoadingPhase] = useState(null)
@@ -134,6 +136,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
     if (!open) {
       setStep(0)
       setFile(null)
+      setLessonLimit(CURRICULUM_MIN_LESSON_LIMIT)
       setParseResult(null)
       setLoading(false)
       setLoadingPhase(null)
@@ -143,12 +146,18 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
 
   if (!open) return null
 
+  const requestedLimit = Number(lessonLimit)
+  const lessonLimitValid =
+    Number.isFinite(requestedLimit) &&
+    requestedLimit >= CURRICULUM_MIN_LESSON_LIMIT &&
+    requestedLimit <= CURRICULUM_BETA_LESSON_LIMIT
+
   async function handleParse() {
-    if (!file) return
+    if (!file || !lessonLimitValid) return
     setLoading(true)
     setLoadingPhase('parse')
     try {
-      const result = await parseCurriculumDocument(file)
+      const result = await parseCurriculumDocument(file, requestedLimit)
       setParseResult(result)
       setStep(1)
     } catch (err) {
@@ -193,7 +202,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
   const progressHint =
     loadingPhase === 'create'
       ? 'Saving extracted lessons. AI lesson plans are generated when you publish from Class setup.'
-      : 'Reading your file and structuring Lessons 1–5. This usually takes 30–60 seconds.'
+      : `Reading your file and extracting ${lessonLimitValid ? requestedLimit : CURRICULUM_MIN_LESSON_LIMIT} lesson(s). This usually takes 30–90 seconds.`
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -266,6 +275,32 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
                 className="hidden"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
+
+              <label className="block rounded-2xl bg-[#313044] px-4 py-4 space-y-2">
+                <span className="text-white text-sm font-semibold">
+                  How many lessons should we extract?
+                </span>
+                <input
+                  type="number"
+                  min={CURRICULUM_MIN_LESSON_LIMIT}
+                  max={CURRICULUM_BETA_LESSON_LIMIT}
+                  step={1}
+                  value={lessonLimit}
+                  onChange={(e) => setLessonLimit(e.target.value)}
+                  className="w-full rounded-xl bg-black/30 border border-white/10 px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#00CED1]/60"
+                />
+                <p className="text-white/40 text-xs leading-relaxed">
+                  Enter a number from {CURRICULUM_MIN_LESSON_LIMIT} to{' '}
+                  {CURRICULUM_BETA_LESSON_LIMIT}. Use {CURRICULUM_BETA_LESSON_LIMIT} to
+                  extract the full Grade 4 ELA track.
+                </p>
+                {!lessonLimitValid && (
+                  <p className="text-[#FF7B7B] text-xs">
+                    Lesson count must be between {CURRICULUM_MIN_LESSON_LIMIT} and{' '}
+                    {CURRICULUM_BETA_LESSON_LIMIT}.
+                  </p>
+                )}
+              </label>
             </div>
           )}
 
@@ -282,8 +317,10 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
                     {parseResult.parsed.metadata.gradeLevel}
                     {parseResult.parsed.metadata.expectationCode &&
                       ` · ${parseResult.parsed.metadata.expectationCode}`}{' '}
-                    · {parseResult.parsed.lessons.length} of {CURRICULUM_BETA_LESSON_LIMIT}{' '}
-                    beta lesson(s)
+                    · {parseResult.parsed.lessons.length} of{' '}
+                    {parseResult.parsed.metadata.betaLessonLimit ??
+                      CURRICULUM_BETA_LESSON_LIMIT}{' '}
+                    requested lesson(s)
                   </p>
                   {parseResult.parsed.metadata.documentScope && (
                     <p className="text-[#00CED1]/80 text-xs mt-1">
@@ -333,7 +370,7 @@ export default function CurriculumUploadWizard({ open, onClose, onCreated }) {
             <button
               type="button"
               onClick={handleParse}
-              disabled={!file || loading}
+              disabled={!file || !lessonLimitValid || loading}
               className="inline-flex items-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] px-5 py-2.5 text-sm font-semibold hover:bg-[#00B8BB] disabled:opacity-50"
             >
               {loading ? 'Parsing…' : 'Parse document'}

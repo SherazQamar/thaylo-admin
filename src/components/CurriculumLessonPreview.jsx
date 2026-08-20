@@ -46,7 +46,13 @@ function SectionBlock({ section }) {
   )
 }
 
-function LessonCard({ lesson, defaultOpen, onPreviewClass, onPreviewAiPlan }) {
+function LessonCard({
+  lesson,
+  defaultOpen,
+  onPreviewClass,
+  onPreviewAiPlan,
+  onPreviewAnswerKey,
+}) {
   const [open, setOpen] = useState(defaultOpen)
   const sections = lesson.sections ?? []
   const assessments = lesson.assessments ?? lesson.questions ?? []
@@ -102,6 +108,17 @@ function LessonCard({ lesson, defaultOpen, onPreviewClass, onPreviewAiPlan }) {
             AI plan
           </button>
         )}
+
+        {onPreviewAnswerKey && (
+          <button
+            type="button"
+            onClick={() => onPreviewAnswerKey(lesson.key)}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/15 text-white/70 px-3 py-2 text-xs font-semibold hover:bg-white/5"
+            title={`View pre-test + assessment answer key for Lesson ${lesson.order}`}
+          >
+            View answers
+          </button>
+        )}
       </div>
 
       {open && (
@@ -151,6 +168,7 @@ export default function CurriculumLessonPreview({
   scriptJson,
   onPreviewClass,
   onPreviewAiPlan,
+  onPreviewAnswerKey,
   status,
   isArchived,
   statusPending: _statusPending,
@@ -270,6 +288,7 @@ export default function CurriculumLessonPreview({
                 defaultOpen={index === 0}
                 onPreviewClass={onPreviewClass}
                 onPreviewAiPlan={onPreviewAiPlan}
+                onPreviewAnswerKey={onPreviewAnswerKey}
               />
             ))
           ) : (

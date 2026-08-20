@@ -28,6 +28,10 @@ const SUPER_ADMIN_BREADCRUMBS = {
     SUPER_ADMIN_ROOT,
     { href: '/super-admin/curriculum', label: 'Curriculum' },
   ],
+  '/super-admin/addenda': [
+    SUPER_ADMIN_ROOT,
+    { href: '/super-admin/addenda', label: 'Addenda' },
+  ],
   '/super-admin/onboarding': [
     SUPER_ADMIN_ROOT,
     { href: '/super-admin/onboarding', label: 'Onboarding Q&A' },

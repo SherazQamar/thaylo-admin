@@ -9,11 +9,12 @@ import {
 
 export const CURRICULUM_PAGE_SIZE = 10
 
-/** Beta: parser extracts only Expectation 1 — Lessons 1–5 (4.ELA.WLL.1). */
-export const CURRICULUM_BETA_LESSON_LIMIT = 5
+/** Super Admin can extract 5–60 lessons from an uploaded curriculum document. */
+export const CURRICULUM_MIN_LESSON_LIMIT = 5
+export const CURRICULUM_BETA_LESSON_LIMIT = 60
 
 export const CURRICULUM_BETA_INFO_MESSAGE =
-  'Beta testing: uploads parse the full document but only generate Lessons 1–5 (Expectation 4.ELA.WLL.1 — Shades of Meaning). The full curriculum has 12 chapters and 60 lessons.'
+  'Choose how many lessons to extract (5–60). Use 60 for the full Grade 4 ELA track.'
 
 export const CURRICULUM_STATUS_LABELS = {
   DRAFT: 'Draft',
@@ -149,9 +150,30 @@ export async function fetchCurriculum(id) {
 }
 
 /**
- * @param {File} file
+ * Returns per-lesson pre-test + assessment answer key for admin review.
+ * @param {number} curriculumId
+ * @param {string} lessonKey
  */
-export async function parseCurriculumDocument(file) {
+export async function fetchLessonAnswerKey(curriculumId, lessonKey) {
+  const { data } = await api.get(
+    `/admin/curriculum/${curriculumId}/lesson-answer-key`,
+    { params: { lessonKey } },
+  )
+  return data.data
+}
+
+/**
+ * @param {File} file
+ * @param {number} [lessonLimit]
+ */
+export async function parseCurriculumDocument(file, lessonLimit = CURRICULUM_BETA_LESSON_LIMIT) {
+  const count = Math.min(
+    CURRICULUM_BETA_LESSON_LIMIT,
+    Math.max(
+      CURRICULUM_MIN_LESSON_LIMIT,
+      Math.round(Number(lessonLimit) || CURRICULUM_MIN_LESSON_LIMIT),
+    ),
+  )
   if (USE_MOCK) {
     await delay(1200)
     const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ')
@@ -162,6 +184,35 @@ export async function parseCurriculumDocument(file) {
       { element: 'd', elementTitle: 'Synonym Substitution' },
       { element: 'e', elementTitle: 'Precision Check' },
     ]
+
+    const lessons = Array.from({ length: count }, (_, index) => {
+      const stub = elementStubs[index] ?? {
+        element: '',
+        elementTitle: `Lesson ${index + 1}`,
+      }
+      return {
+        key: `lesson-${index + 1}`,
+        order: index + 1,
+        title: `Lesson ${index + 1}: ${stub.elementTitle}`,
+        element: stub.element,
+        elementTitle: stub.elementTitle,
+        studentLanguage: `I'm able to demonstrate ${stub.elementTitle.toLowerCase()}.`,
+        sections: [
+          {
+            id: 'student-language',
+            label: 'Student Language',
+            content: `I'm able to demonstrate ${stub.elementTitle.toLowerCase()}.`,
+          },
+          {
+            id: 'instructional-core',
+            label: 'Instructional Core',
+            content: `Extracted from ${file.name} — connect backend for full document text.`,
+          },
+        ],
+        assessments: [],
+        questions: [],
+      }
+    })
 
     return {
       rawText: `Parsed content from ${file.name}…`,
@@ -176,37 +227,17 @@ export async function parseCurriculumDocument(file) {
           estimatedMinutes: 25,
           tone: 'Warm, professional, encouraging — never shaming',
           betaMode: true,
-          betaLessonLimit: CURRICULUM_BETA_LESSON_LIMIT,
-          documentScope: `Beta: Lessons 1–${CURRICULUM_BETA_LESSON_LIMIT} only (Expectation 1 of 12)`,
+          betaLessonLimit: count,
+          documentScope: `Lessons 1–${count} extracted from upload`,
         },
-        lessons: elementStubs.map((stub, index) => ({
-          key: `lesson-${index + 1}`,
-          order: index + 1,
-          title: `Lesson ${index + 1}: ${stub.elementTitle}`,
-          element: stub.element,
-          elementTitle: stub.elementTitle,
-          studentLanguage: `I'm able to demonstrate ${stub.elementTitle.toLowerCase()}.`,
-          sections: [
-            {
-              id: 'student-language',
-              label: 'Student Language',
-              content: `I'm able to demonstrate ${stub.elementTitle.toLowerCase()}.`,
-            },
-            {
-              id: 'instructional-core',
-              label: 'Instructional Core',
-              content: `Extracted from ${file.name} — connect backend for full document text.`,
-            },
-          ],
-          assessments: [],
-          questions: [],
-        })),
+        lessons,
       },
     }
   }
 
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('lessonLimit', String(count))
 
   const token = getAdminToken()
   const baseURL = api.defaults.baseURL
@@ -305,6 +336,11 @@ export async function updateCurriculumStatus(id, payload) {
   }
 
   const { data } = await api.patch(`/admin/curriculum/${id}`, payload)
+  return data.data
+}
+
+export async function updateCurriculumScript(id, scriptJson) {
+  const { data } = await api.patch(`/admin/curriculum/${id}`, { scriptJson })
   return data.data
 }
 

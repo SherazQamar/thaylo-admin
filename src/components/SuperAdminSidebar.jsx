@@ -9,6 +9,7 @@ import {
   Cpu,
   FileText,
   BookOpen,
+  Layers,
   ShieldCheck,
   LifeBuoy,
   UserCircle2,
@@ -46,6 +47,13 @@ const NAV = [
     matchPaths: ['/super-admin/curriculum'],
     Icon: BookOpen,
     mobileBottom: true,
+  },
+  {
+    label: 'ADDENDA',
+    href: '/super-admin/addenda',
+    matchPaths: ['/super-admin/addenda'],
+    Icon: Layers,
+    mobileBottom: false,
   },
   {
     label: 'ONBOARDING Q&A',

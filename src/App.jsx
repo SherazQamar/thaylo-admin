@@ -17,6 +17,8 @@ import LearningSystem from './pages/LearningSystem'
 import OnboardingQA from './pages/OnboardingQA'
 import CurriculumList from './pages/CurriculumList'
 import CurriculumRefinement from './pages/CurriculumRefinement'
+import AddendaList from './pages/AddendaList'
+import AddendaDetail from './pages/AddendaDetail'
 import Insights from './pages/Insights'
 import AiControl from './pages/AiControl'
 import BillingPlans from './pages/BillingPlans'
@@ -156,6 +158,22 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
               <CurriculumRefinement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/addenda"
+          element={
+            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
+              <AddendaList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/addenda/:id"
+          element={
+            <ProtectedRoute allowedRoles={SUPER_ADMIN_ONLY_ROLES}>
+              <AddendaDetail />
             </ProtectedRoute>
           }
         />

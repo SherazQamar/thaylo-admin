@@ -1,26 +1,23 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Pencil, Trash2, BookOpen, Sparkles, Info } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Layers, Info } from 'lucide-react'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ListPagination from '../components/ListPagination'
-import CurriculumUploadWizard from '../components/CurriculumUploadWizard'
+import AddendaUploadWizard from '../components/AddendaUploadWizard'
 import { useNotifyError } from '../hooks/useNotifyError'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 import {
-  CURRICULUM_BETA_INFO_MESSAGE,
-  CURRICULUM_BETA_LESSON_LIMIT,
-  CURRICULUM_STATUS_LABELS,
-  curriculumQueryKeys,
-  deleteCurriculum,
-  fetchCurricula,
-  isCurriculumMockMode,
-} from '../lib/curriculum-api'
+  ADDENDA_INFO_MESSAGE,
+  ADDENDA_STATUS_LABELS,
+  addendaQueryKeys,
+  deleteAddendum,
+  fetchAddenda,
+} from '../lib/addenda-api'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All statuses' },
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'IN_REVIEW', label: 'In review' },
   { value: 'PUBLISHED', label: 'Published' },
   { value: 'ARCHIVED', label: 'Archived' },
 ]
@@ -40,12 +37,12 @@ function StatusBadge({ status }) {
         (styles[status] ?? styles.DRAFT)
       }
     >
-      {CURRICULUM_STATUS_LABELS[status] ?? status}
+      {ADDENDA_STATUS_LABELS[status] ?? status}
     </span>
   )
 }
 
-export default function CurriculumList() {
+export default function AddendaList() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('')
@@ -64,15 +61,15 @@ export default function CurriculumList() {
   )
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: curriculumQueryKeys.list(listParams),
-    queryFn: () => fetchCurricula(listParams),
+    queryKey: addendaQueryKeys.list(listParams),
+    queryFn: () => fetchAddenda(listParams),
   })
   useNotifyError(error, isError)
 
   const deleteMutation = useMutation({
-    mutationFn: deleteCurriculum,
+    mutationFn: deleteAddendum,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum-addenda'] })
     },
   })
 
@@ -82,25 +79,25 @@ export default function CurriculumList() {
   async function handleDelete(item) {
     const message =
       item.status === 'PUBLISHED'
-        ? `Archive "${item.title}"? Published curriculum will be hidden from new class sessions.`
+        ? `Archive "${item.title}"? Students will fall back to built-in addenda until you publish another version.`
         : `Delete "${item.title}"? This cannot be undone.`
-
     if (!window.confirm(message)) return
     await deleteMutation.mutateAsync(item.id)
   }
 
   return (
-    <SuperAdminLayout title="Curriculum Studio">
+    <SuperAdminLayout title="Addenda">
       <div className="space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-[#00CED1]/10 flex items-center justify-center">
-              <BookOpen size={22} className="text-[#00CED1]" />
+              <Layers size={22} className="text-[#00CED1]" />
             </div>
             <div>
-              <h2 className="text-white text-3xl font-bold tracking-tight">Curriculum</h2>
+              <h2 className="text-white text-3xl font-bold tracking-tight">Addenda</h2>
               <p className="text-white/50 text-sm mt-1">
-                Upload a class document, extract lessons, test content, and publish for students.
+                Upload retry documents, review extracted lessons and attempts, then publish for
+                students.
               </p>
             </div>
           </div>
@@ -111,29 +108,14 @@ export default function CurriculumList() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00CED1] text-[#111023] text-sm font-semibold px-5 py-2.5 hover:bg-[#00B8BB]"
           >
             <Plus size={16} />
-            Upload curriculum
+            Upload addenda
           </button>
         </div>
 
         <div className="rounded-2xl border border-[#00CED1]/30 bg-[#00CED1]/10 px-4 py-3 text-[#00CED1] text-sm flex items-start gap-2">
           <Info size={16} className="shrink-0 mt-0.5" />
-          <span>
-            <strong>Lesson count</strong> — {CURRICULUM_BETA_INFO_MESSAGE} Each upload
-            produces up to <strong>{CURRICULUM_BETA_LESSON_LIMIT} lessons</strong> for
-            testing Calyx delivery.
-          </span>
+          <span>{ADDENDA_INFO_MESSAGE}</span>
         </div>
-
-        {isCurriculumMockMode() && (
-          <div className="rounded-2xl border border-[#FFC542]/30 bg-[#FFC542]/10 px-4 py-3 text-[#FFC542] text-sm flex items-start gap-2">
-            <Sparkles size={16} className="shrink-0 mt-0.5" />
-            <span>
-              <strong>UI demo mode</strong> — curriculum data is stored in your browser
-              (localStorage) until the backend API is connected. Set{' '}
-              <code className="text-white/80">VITE_CURRICULUM_USE_MOCK=false</code> when ready.
-            </span>
-          </div>
-        )}
 
         <div className="rounded-2xl p-5 lg:p-6" style={{ backgroundColor: '#313044' }}>
           <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-4">
@@ -179,14 +161,14 @@ export default function CurriculumList() {
           </div>
 
           {isError && (
-            <p className="text-white/50 text-sm mb-4">Unable to load curricula right now.</p>
+            <p className="text-white/50 text-sm mb-4">Unable to load addenda right now.</p>
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[980px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  {['Title', 'Subject', 'Grade', 'Lessons', 'Est. min', 'Status', 'Actions'].map(
+                  {['Title', 'Subject', 'Grade', 'Lessons', 'Retries', 'Max attempt', 'Status', 'Actions'].map(
                     (col) => (
                       <th
                         key={col}
@@ -204,16 +186,16 @@ export default function CurriculumList() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
-                      Loading curricula…
+                    <td colSpan={8} className="py-10 text-center text-white/40 text-sm">
+                      Loading addenda…
                     </td>
                   </tr>
                 )}
 
                 {!isLoading && items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
-                      No curriculum yet. Upload a class document to get started.
+                    <td colSpan={8} className="py-10 text-center text-white/40 text-sm">
+                      No addenda yet. Upload Addenda Lessons 1–10.docx to extract retries.
                     </td>
                   </tr>
                 )}
@@ -233,8 +215,9 @@ export default function CurriculumList() {
                       <td className="py-4 px-4 text-white/70 text-sm">{item.subject}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.gradeLevel}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.lessonCount}</td>
+                      <td className="py-4 px-4 text-white/70 text-sm">{item.retryCount}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">
-                        {item.estimatedMinutes ?? '—'}
+                        {item.maxAttemptNumber}
                       </td>
                       <td className="py-4 px-4">
                         <StatusBadge status={item.status} />
@@ -243,9 +226,9 @@ export default function CurriculumList() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => navigate(`/super-admin/curriculum/${item.id}`)}
+                            onClick={() => navigate(`/super-admin/addenda/${item.id}`)}
                             className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:text-[#00CED1]"
-                            aria-label="Open refinement studio"
+                            aria-label="Review extracted addenda"
                           >
                             <Pencil size={14} />
                           </button>
@@ -272,17 +255,17 @@ export default function CurriculumList() {
             meta={meta}
             onPageChange={setPage}
             isLoading={isLoading}
-            itemLabel="curricula"
+            itemLabel="addenda"
           />
         </div>
       </div>
 
-      <CurriculumUploadWizard
+      <AddendaUploadWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onCreated={(item) => {
-          queryClient.setQueryData(curriculumQueryKeys.detail(item.id), item)
-          navigate(`/super-admin/curriculum/${item.id}`)
+          queryClient.setQueryData(addendaQueryKeys.detail(item.id), item)
+          navigate(`/super-admin/addenda/${item.id}`)
         }}
       />
     </SuperAdminLayout>
