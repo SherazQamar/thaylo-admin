@@ -15,6 +15,7 @@ import { notify } from '../lib/notify'
 import { useNotifyError } from '../hooks/useNotifyError'
 import {
   ADDENDA_INFO_MESSAGE,
+  ADDENDA_PUBLISH_CONFIRM_MESSAGE,
   ADDENDA_STATUS_LABELS,
   addendaQueryKeys,
   attemptLabel,
@@ -148,7 +149,9 @@ export default function AddendaDetail() {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum-addenda'] })
       if (status === 'PUBLISHED') {
         setPublishConfirmOpen(false)
-        notify.success('Addenda published. Student retries will use this document.')
+        notify.success(
+          'Addenda published. It stays live with other published packages; lessons are merged by number.',
+        )
       }
     },
   })
@@ -254,6 +257,14 @@ export default function AddendaDetail() {
                 </p>
                 <dl className="space-y-2 text-sm">
                   <div className="flex justify-between gap-3">
+                    <dt className="text-white/50">Lesson range</dt>
+                    <dd className="text-white font-semibold">
+                      {extraction?.lessonFrom != null && extraction?.lessonTo != null
+                        ? `${extraction.lessonFrom}–${extraction.lessonTo}`
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
                     <dt className="text-white/50">Lessons</dt>
                     <dd className="text-white font-semibold">
                       {extraction?.primaryLessonCount ?? data.lessonCount}
@@ -349,7 +360,7 @@ export default function AddendaDetail() {
         onClose={() => setPublishConfirmOpen(false)}
         onConfirm={() => statusMutation.mutate('PUBLISHED')}
         title="Publish addenda?"
-        message="This version becomes the retry source for students in this subject and grade. Other published addenda for the same scope will be archived. Extra attempts are used only if they exist in the uploaded document."
+        message={ADDENDA_PUBLISH_CONFIRM_MESSAGE}
         confirmLabel="Publish"
         isLoading={statusMutation.isPending}
         icon={<CheckCircle2 className="text-[#00CED1]" size={36} />}

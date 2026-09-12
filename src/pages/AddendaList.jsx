@@ -168,7 +168,7 @@ export default function AddendaList() {
             <table className="w-full min-w-[980px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  {['Title', 'Subject', 'Grade', 'Lessons', 'Retries', 'Max attempt', 'Status', 'Actions'].map(
+                  {['Title', 'Subject', 'Grade', 'Lessons', 'Max attempt', 'Status', 'Actions'].map(
                     (col) => (
                       <th
                         key={col}
@@ -186,7 +186,7 @@ export default function AddendaList() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-white/40 text-sm">
+                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
                       Loading addenda…
                     </td>
                   </tr>
@@ -194,7 +194,7 @@ export default function AddendaList() {
 
                 {!isLoading && items.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-white/40 text-sm">
+                    <td colSpan={7} className="py-10 text-center text-white/40 text-sm">
                       No addenda yet. Upload Addenda Lessons 1–10.docx to extract retries.
                     </td>
                   </tr>
@@ -214,8 +214,12 @@ export default function AddendaList() {
                       </td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.subject}</td>
                       <td className="py-4 px-4 text-white/70 text-sm">{item.gradeLevel}</td>
-                      <td className="py-4 px-4 text-white/70 text-sm">{item.lessonCount}</td>
-                      <td className="py-4 px-4 text-white/70 text-sm">{item.retryCount}</td>
+                      <td className="py-4 px-4 text-white/70 text-sm">
+                        {item.lessonRange ||
+                          (item.lessonFrom != null && item.lessonTo != null
+                            ? `${item.lessonFrom}–${item.lessonTo}`
+                            : item.lessonCount)}
+                      </td>
                       <td className="py-4 px-4 text-white/70 text-sm">
                         {item.maxAttemptNumber}
                       </td>

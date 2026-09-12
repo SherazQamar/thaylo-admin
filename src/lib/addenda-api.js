@@ -7,7 +7,10 @@ export const ADDENDA_PAGE_SIZE = 10
 export const ADDENDA_STATUS_LABELS = CURRICULUM_STATUS_LABELS
 
 export const ADDENDA_INFO_MESSAGE =
-  'Upload the Addenda Word document. The system extracts every LESSON and RETRY block from the file — it does not invent extra attempts.'
+  'Upload Addenda in chunks (e.g. Lessons 1–10, then 11–20). Multiple packages can stay published for the same grade — the system merges them by lesson. Overlapping lesson keys use the newest published package.'
+
+export const ADDENDA_PUBLISH_CONFIRM_MESSAGE =
+  'This package becomes live alongside any other published Addenda for the same subject and grade. Students get pathways merged by lesson number. If this file overlaps an older package, this newer one wins for those lessons.'
 
 export const addendaQueryKeys = {
   list: (params) => ['admin', 'curriculum-addenda', params],

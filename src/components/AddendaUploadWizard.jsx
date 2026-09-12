@@ -247,6 +247,9 @@ export default function AddendaUploadWizard({ open, onClose, onCreated }) {
                   <p className="text-white/50 text-sm mt-1">
                     {parseResult.parsed?.metadata?.subject} ·{' '}
                     {parseResult.parsed?.metadata?.gradeLevel} ·{' '}
+                    {extraction?.lessonFrom != null && extraction?.lessonTo != null
+                      ? `lessons ${extraction.lessonFrom}–${extraction.lessonTo} · `
+                      : ''}
                     {extraction?.primaryLessonCount ?? 0} lesson(s) ·{' '}
                     {extraction?.retryCount ?? 0} retry variant(s) · max attempt{' '}
                     {extraction?.maxAttemptNumber ?? 1}
@@ -256,7 +259,12 @@ export default function AddendaUploadWizard({ open, onClose, onCreated }) {
 
               <div className="rounded-2xl border border-white/10 bg-[#313044]/80 px-4 py-3 text-white/55 text-sm">
                 <strong className="text-white/75">Continue</strong> saves a draft. Open it to
-                inspect every extracted block, then publish so student retries use this document.
+                inspect every extracted block, then publish. Multiple published packages for the
+                same grade stay active and merge by lesson
+                {extraction?.lessonFrom != null && extraction?.lessonTo != null
+                  ? ` (this file covers ${extraction.lessonFrom}–${extraction.lessonTo})`
+                  : ''}
+                .
               </div>
 
               {extraction?.coverage?.length > 0 && (
